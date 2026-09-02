@@ -2,172 +2,129 @@
 
 AI Talent Hack 2026
 
-## 1. Project Overview
+## 1. 项目概述
 
-### 1.1 Project Background
+### 1.1 项目背景
 
-This project targets video data annotation scenarios in computer vision and robot learning.
+本项目面向计算机视觉和机器人学习中的视频数据标注场景。
 
-Currently, human annotators need to manually watch videos containing human actions and perform the following tasks:
+当前，工作人员需要人工观看包含人类操作的视频，并手动完成以下工作：
 
-1. Divide the video into multiple action steps;
-2. Determine the start and end time of each action;
-3. Identify the action type;
-4. Identify the objects involved in the action;
-5. Select representative keyframes for each action;
-6. Export the final annotations as JSON or CSV.
+1. 将视频划分为多个动作步骤；
+2. 确定每个动作的开始和结束时间；
+3. 判断动作类型；
+4. 判断动作涉及的对象；
+5. 为每个动作选择代表性关键帧；
+6. 最终将标注结果导出为 JSON 或 CSV。
 
-For a short video of 5–30 seconds, manual annotation typically takes approximately 15–30 minutes. Therefore, constructing large-scale video datasets requires significant human labor.
+对于一个 5–30 秒的短视频，人工标注通常需要约 15–30 分钟。因此，大规模视频数据集的构建具有较高的人力成本。
 
-The goal of this project is **not to completely replace human annotation**, but to use AI to automatically generate a high-quality **AI-generated draft annotation**, which can then be quickly reviewed and corrected by an expert.
+本项目的目标不是完全取代人工标注，而是通过 AI 自动生成一个高质量的**初始标注结果（AI-generated draft annotation）**，然后由专家快速检查和修正。
 
-The final workflow is:
+最终形成：
 
 ```text
 Video
-
   ↓
-
 AI-generated annotation
-
   ↓
-
 Human verification
-
   ↓
-
 Corrected annotation
-
   ↓
-
 JSON / CSV
-
   ↓
-
 Future robot learning dataset
 ```
 
-### 1.2 Project Goals
+### 1.2 项目目标
 
-Build a web application that provides an end-to-end workflow for short-video action annotation:
+构建一个 Web 应用，实现短视频动作标注的完整闭环：
 
 ```text
-Video Upload
-
+视频上传
    ↓
-
-Automatic Video Analysis
-
+自动视频分析
    ↓
-
-Action Temporal Segmentation
-
+动作时间分段
    ↓
-
 Action Recognition
-
    ↓
-
 Object Recognition
-
    ↓
-
 Keyframe Selection
-
    ↓
-
-Timeline Visualization
-
+时间轴可视化
    ↓
-
-Human Review and Editing
-
+人工检查与修改
    ↓
-
 JSON / CSV Export
 ```
 
 ---
 
-# 2. Business Objectives
+# 2. 业务目标
 
-## 2.1 Users
+## 2.1 用户
 
-The system is primarily intended for:
+系统主要面向：
 
-* ML Engineers
-* Computer Vision Engineers
-* Data Annotators
+* ML Engineer
+* Computer Vision Engineer
+* Data Annotator
 
-## 2.2 User Workflow
+## 2.2 用户流程
 
 ```mermaid
 flowchart LR
-
     A[Upload Video] --> B[AI Processing]
-
     B --> C[Automatic Annotation]
-
     C --> D[Review Timeline]
-
     D --> E{Need Correction?}
-
     E -->|Yes| F[Edit Annotation]
-
     E -->|No| G[Verify]
-
     F --> G
-
     G --> H[Export JSON / CSV]
 ```
 
-## 2.3 Core Business Value
+## 2.3 核心业务价值
 
-Manual annotation:
+人工标注：
 
 ```text
 15–30 min / video
 ```
 
-Target:
+目标：
 
 ```text
 AI processing
-
 +
-
 Human verification
-
 <
-
 1/3 of manual annotation time
 ```
 
-For example:
+例如：
 
 ```text
 Manual annotation:
-
 20 min
 
 AI processing:
-
 ~1 min
 
 Human verification:
-
 ~3–4 min
 
 Total:
-
 ~4–5 min
 
 Speedup:
-
 ~4×–5×
 ```
 
-The minimum target is:
+最终目标是至少实现：
 
 $$
 \text{Speedup} \geq 3
@@ -175,46 +132,46 @@ $$
 
 ---
 
-# 3. Functional Scope
+# 3. 功能范围
 
-## 3.1 MVP Must-Have Features
+## 3.1 MVP 必须实现
 
-| Feature             | Priority |
-| ------------------- | -------: |
-| Video Upload        |       P0 |
-| Video Preprocessing |       P0 |
-| Action Segmentation |       P0 |
-| Action Recognition  |       P0 |
-| Object Recognition  |       P0 |
-| Keyframe Selection  |       P0 |
-| Timeline            |       P0 |
-| Annotation Editor   |       P0 |
-| JSON Export         |       P0 |
-| CSV Export          |       P0 |
+| 功能                  | 优先级 |
+| ------------------- | --: |
+| Video Upload        |  P0 |
+| Video Preprocessing |  P0 |
+| Action Segmentation |  P0 |
+| Action Recognition  |  P0 |
+| Object Recognition  |  P0 |
+| Keyframe Selection  |  P0 |
+| Timeline            |  P0 |
+| Annotation Editor   |  P0 |
+| JSON Export         |  P0 |
+| CSV Export          |  P0 |
 
-## 3.2 Recommended Features
+## 3.2 推荐实现
 
-| Feature                     | Priority |
-| --------------------------- | -------: |
-| Confidence Score            |       P1 |
-| AI / Human Source           |       P1 |
-| Annotation Versioning       |       P1 |
-| Evaluation Pipeline         |       P1 |
-| Processing Time Measurement |       P1 |
-| Low-confidence Highlighting |       P1 |
+| 功能                          | 优先级 |
+| --------------------------- | --: |
+| Confidence Score            |  P1 |
+| AI / Human Source           |  P1 |
+| Annotation Versioning       |  P1 |
+| Evaluation Pipeline         |  P1 |
+| Processing Time Measurement |  P1 |
+| Low-confidence Highlighting |  P1 |
 
-## 3.3 Implement If Time Allows
+## 3.3 有时间再实现
 
-| Feature                   | Priority |
-| ------------------------- | -------: |
-| SAM 2 Visualization       |       P2 |
-| Object Mask               |       P2 |
-| Hand/Object Tracking      |       P2 |
-| Uncertainty Visualization |       P2 |
+| 功能                        | 优先级 |
+| ------------------------- | --: |
+| SAM 2 Visualization       |  P2 |
+| Object Mask               |  P2 |
+| Hand/Object Tracking      |  P2 |
+| Uncertainty Visualization |  P2 |
 
-## 3.4 Explicitly Out of Scope
+## 3.4 明确不实现
 
-The following features are not part of the Hackathon MVP:
+以下功能不属于 Hackathon MVP：
 
 * Robot Control
 * ROS
@@ -230,9 +187,9 @@ The following features are not part of the Hackathon MVP:
 
 ---
 
-# 4. Overall Technical Architecture
+# 4. 总体技术架构
 
-The system adopts a **frontend-backend separation + AI pipeline + human-in-the-loop** architecture.
+系统采用前后端分离 + AI Pipeline + Human-in-the-loop 架构。
 
 ```mermaid
 flowchart TB
@@ -240,159 +197,109 @@ flowchart TB
     User[User]
 
     subgraph Frontend
-
         UI[React + TypeScript]
-
         Player[Video Player]
-
         Timeline[Annotation Timeline]
-
         Editor[Annotation Editor]
-
     end
 
     subgraph Backend
-
         API[FastAPI]
-
         Job[Job Manager]
-
         AnnotationAPI[Annotation API]
-
         ExportAPI[Export API]
-
     end
 
     subgraph AI["AI Processing Pipeline"]
-
         Preprocess[Video Preprocessing]
-
         Sampling[Frame Sampling]
-
         Segmentation[Temporal Segmentation]
-
         VLM[VLM Recognition]
-
         Object[Object Recognition]
-
         Keyframe[Keyframe Selection]
-
         Fusion[Annotation Fusion]
-
         Validation[Schema Validation]
-
     end
 
     subgraph Storage
-
         VideoStorage[Video Storage]
-
         AnnotationStorage[Annotation JSON]
-
     end
 
     User --> UI
-
     UI --> API
 
     API --> Job
-
     API --> AnnotationAPI
-
     API --> ExportAPI
 
     Job --> Preprocess
-
     Preprocess --> Sampling
-
     Sampling --> Segmentation
-
     Segmentation --> VLM
-
     Segmentation --> Object
-
     Segmentation --> Keyframe
 
     VLM --> Fusion
-
     Object --> Fusion
-
     Keyframe --> Fusion
 
     Fusion --> Validation
-
     Validation --> AnnotationStorage
 
     Preprocess --> VideoStorage
 
     AnnotationStorage --> AnnotationAPI
-
     AnnotationAPI --> UI
-
     ExportAPI --> AnnotationStorage
 
     UI --> Player
-
     UI --> Timeline
-
     UI --> Editor
 ```
 
 ---
 
-# 5. Core Design Principles
+# 5. 核心设计原则
 
-## 5.1 Do Not Train a Large Model from Scratch
+## 5.1 不从零训练大模型
 
-Given that the development period is only approximately five days, the project will not involve:
+由于开发周期只有约 5 天，不进行：
 
 ```text
 Large-scale dataset
-
         ↓
-
 Model training
-
         ↓
-
 Hyperparameter tuning
-
         ↓
-
 Production deployment
 ```
 
-Instead, the system will use:
+而采用：
 
 ```text
 Pre-trained Models
-
        +
-
 VLM / API
-
        +
-
 Lightweight Temporal Algorithms
-
        +
-
 Human-in-the-loop
 ```
 
-This allows the majority of development effort to be focused on the **complete system pipeline** rather than model training.
+这样能够将主要开发时间投入到**完整系统链路**而不是模型训练。
 
 ---
 
 # 6. AI Pipeline
 
-## 6.1 Pipeline Overview
+## 6.1 Pipeline 总览
 
 ```mermaid
 flowchart LR
 
     A[MP4 / MOV] --> B[FFmpeg / OpenCV]
-
     B --> C[Frame Sampling]
 
     C --> D[Visual Features]
@@ -406,13 +313,10 @@ flowchart LR
     E --> H[Keyframe Selection]
 
     G --> I[Annotation Fusion]
-
     H --> I
 
     I --> J[Confidence Estimation]
-
     J --> K[Pydantic Validation]
-
     K --> L[Annotation JSON]
 ```
 
@@ -420,42 +324,32 @@ flowchart LR
 
 # 7. Video Preprocessing
 
-Input requirements:
+输入要求：
 
 * MP4 / MOV
-* 720p or higher
-* 5–30 seconds
-* Single person
-* No video editing
-* No complex industrial operations
+* 720p 或以上
+* 5–30 秒
+* 单人
+* 无视频剪辑
+* 无复杂生产操作
 
-The video is first standardized:
+视频首先进行标准化处理：
 
 ```text
 Input Video
-
     ↓
-
 FFmpeg
-
     ↓
-
 Normalize FPS
-
     ↓
-
 Normalize Resolution
-
     ↓
-
 Extract Metadata
-
     ↓
-
 Frame Sampling
 ```
 
-Metadata is stored as:
+保存：
 
 ```json
 {
@@ -471,89 +365,79 @@ Metadata is stored as:
 
 # 8. Frame Sampling
 
-It is not necessary to process every frame of the video.
+不需要处理视频的每一帧。
 
-For example:
+例如：
 
 ```text
 30 FPS
-
 ↓
-
 Sampling
-
 ↓
-
 2 FPS
 ```
 
-For a 30-second video:
+对于 30 秒视频：
 
 $$
 30 \times 2 = 60
 $$
 
-Only approximately 60 frames need to be processed.
+只需要处理约 60 帧。
 
-Recommended initial sampling rate:
+推荐初始采样率：
 
 ```text
 1–2 FPS
 ```
 
-If higher boundary precision is required for segmentation, local high-frequency sampling can be performed around candidate boundaries.
+如果 segmentation 对边界精度要求较高，可以在候选边界附近进行局部高频采样。
 
-For example:
+例如：
 
 ```text
 Global sampling:
-
 2 FPS
 
 Candidate boundary detected:
-
 t = 7.0 sec
 
 Local refinement:
-
 6.0–8.0 sec
-
 ↓
-
 10 FPS
 ```
 
-This approach reduces computational cost while improving temporal boundary precision.
+这样可以同时降低计算成本并提高时间边界精度。
 
 ---
 
 # 9. Temporal Action Segmentation
 
-## 9.1 Problem Definition
+## 9.1 问题定义
 
-Input:
+输入：
 
 $$
 V = \{f_1, f_2, ..., f_n\}
 $$
 
-Output:
+输出：
 
 $$
 S = \{s_1, s_2, ..., s_k\}
 $$
 
-where:
+其中：
 
 $$
 s_i = (t_i^{start}, t_i^{end})
 $$
 
-For example:
+例如：
 
 ```text
 0.0 ─────── 4.5 ───────── 10.2 ───────── 15.8
-
     Action 1       Action 2        Action 3
 ```
 
@@ -561,35 +445,27 @@ For example:
 
 ## 9.2 Hybrid Segmentation
 
-Instead of relying on a VLM to directly predict precise temporal boundaries, the system uses:
+不依赖 VLM 直接预测精确时间边界，而使用：
 
 ```text
 Visual Change Detection
-
 +
-
 Semantic VLM Analysis
-
 +
-
 Temporal Smoothing
 ```
 
-Architecture:
+架构：
 
 ```mermaid
 flowchart LR
-
     A[Video Frames] --> B[Visual Embeddings]
-
     B --> C[Adjacent Frame Distance]
-
     C --> D[Candidate Boundaries]
 
     D --> E[VLM Semantic Validation]
 
     E --> F[Temporal Smoothing]
-
     F --> G[Final Segments]
 ```
 
@@ -597,107 +473,90 @@ flowchart LR
 
 ## 9.3 Visual Embedding Distance
 
-For consecutive frames:
+对于连续帧：
 
 $$
 e_i = Encoder(f_i)
 $$
 
-Cosine distance is used:
+使用 cosine distance：
 
 $$
-d_i =
-1 -
+d_i = 1 -
 \frac{e_i \cdot e_{i+1}}
 {\|e_i\|\|e_{i+1}\|}
 $$
 
-This produces a signal such as:
+得到：
 
 ```text
 time
-
  ↓
 
 d(t)
 
       ▲
-
       │       boundary
-
       │          │
-
  0.8  │          █
-
  0.6  │          █
-
  0.4  │     █    █
-
  0.2  │ █   █    █   █
-
  0.0  └────────────────────
 ```
 
-The distance signal is processed using:
+对 distance signal 进行：
 
 1. Smoothing
 2. Thresholding
 3. Peak detection
 4. Minimum segment duration filtering
 
-This produces candidate boundaries.
+得到 candidate boundaries。
 
 ---
 
 # 10. VLM Semantic Validation
 
-Visual change detection can only identify:
+Visual change detection只能发现：
 
-> “A significant visual change has occurred.”
+> “画面发生了明显变化”
 
-It cannot guarantee:
+但不能保证：
 
-> “A new action has started.”
+> “一个新的动作开始了”。
 
-For example:
+例如：
 
 ```text
-Hand moves
-
+手移动
 ↓
-
-Hand stops
-
+手停止
 ↓
-
-Drinking
+喝水
 ```
 
-The visual change may be relatively small.
+视觉变化可能非常小。
 
-Therefore:
+因此：
 
 ```text
 Visual Signal
-
       +
-
 VLM Semantic Understanding
-
       ↓
-
 Action Boundary
 ```
 
-VLM input:
+VLM 输入：
 
 ```text
 Video segment / sampled frames
 ```
 
-The output is strictly constrained to a predefined ontology.
+输出严格限制在预定义 ontology 中。
 
-For example:
+例如：
 
 ```json
 {
@@ -711,9 +570,9 @@ For example:
 
 # 11. Action Ontology
 
-To prevent the VLM from producing many semantically similar but syntactically different labels, actions must not be generated freely.
+为了避免 VLM 输出大量语义相近但字符串不同的结果，不允许自由生成 action。
 
-For example:
+例如：
 
 ```python
 ACTIONS = [
@@ -729,7 +588,7 @@ ACTIONS = [
 ]
 ```
 
-Objects:
+Object：
 
 ```python
 OBJECTS = [
@@ -743,31 +602,30 @@ OBJECTS = [
 ]
 ```
 
-The VLM must select labels from a finite vocabulary.
+VLM 必须从有限 vocabulary 中选择。
 
 ---
 
 # 12. Action Representation
 
-The recommended representation follows an approach similar to EPIC-KITCHENS:
+推荐采用类似 EPIC-KITCHENS 的：
 
 ```text
 Verb + Noun
 ```
 
-Examples:
+表示方式。
+
+例如：
 
 ```text
 pick + cup
-
 pour + water
-
 open + drawer
-
 cut + tomato
 ```
 
-Final representation:
+最终：
 
 ```json
 {
@@ -776,76 +634,65 @@ Final representation:
 }
 ```
 
-This design has two advantages:
+这种设计有两个优势：
 
-1. It reduces annotation label inconsistency;
-2. It makes future mapping to robot skills easier.
+1. 降低 annotation label inconsistency；
+2. 更容易映射到未来的 robot skill。
 
 ---
 
 # 13. Object Recognition
 
-Object recognition can be performed using a VLM or combined with a dedicated detector.
+Object recognition 可以通过 VLM 完成，也可以结合 detector。
 
-Recommended approach:
+推荐方案：
 
 ```mermaid
 flowchart LR
-
     A[Action Segment] --> B[Sample 3–5 Frames]
-
     B --> C[VLM / Detector]
-
     C --> D[Object Candidates]
-
     D --> E[Temporal Voting]
-
     E --> F[Final Object]
 ```
 
-For example:
+例如：
 
 ```text
 Frame 1 → cup 0.91
-
 Frame 2 → cup 0.94
-
 Frame 3 → cup 0.88
-
 Frame 4 → bottle 0.11
 
                 ↓
 
 Final:
-
 cup
 ```
 
-This is more stable than relying on a single-frame prediction.
+这样比单帧预测更加稳定。
 
 ---
 
 # 14. Keyframe Selection
 
-For each action segment:
+对于每个 action segment：
 
 $$
 [t_{start}, t_{end}]
 $$
 
-several candidate frames are generated.
+生成若干 candidate frames。
 
-For example:
+例如：
 
 ```text
 start ───────────────────── end
-
   │        │       │        │
-
   f1       f2      f3       f4
 ```
 
-A scoring function can be defined as:
+可以定义：
 
 $$
 Score(f) =
@@ -856,79 +703,65 @@ w_2 S_{visibility}
 w_3 S_{sharpness}
 $$
 
-where:
+其中：
 
-* \(S_{semantic}\): whether the frame represents the action
-* \(S_{visibility}\): whether the hand and object are clearly visible
-* \(S_{sharpness}\): image sharpness
+* \(S_{semantic}\)：是否能代表 action
+* \(S_{visibility}\)：手和对象是否清晰可见
+* \(S_{sharpness}\)：图像是否清晰
 
-For the Hackathon MVP, this can be simplified to:
+Hackathon MVP 可以进一步简化为：
 
 ```text
 Segment
-
  ↓
-
 Middle frames
-
  ↓
-
 Sharpness filtering
-
  ↓
-
 Best frame
 ```
 
 ---
 
-# 15. Role of SAM 2
+# 15. SAM 2 的定位
 
-SAM 2 should **not** be used as the core action recognition model.
+SAM 2 不应该作为核心 action recognition 模型。
 
-It is more suitable for:
+它更适合用于：
 
 ```text
 Object segmentation
-
 Object tracking
-
 Hand/object visualization
 ```
 
-Optional architecture:
+可选架构：
 
 ```mermaid
 flowchart LR
-
     A[Action Segment] --> B[Keyframe]
-
     B --> C[SAM 2]
-
     C --> D[Object Mask]
-
     D --> E[Visualization]
 ```
 
-If time is limited, SAM 2 can be completely omitted.
+如果时间不足，可以完全不启用 SAM 2。
 
-The system should therefore treat it as an optional module:
+系统应该将其设计成 optional module：
 
 ```text
 Core Pipeline
-
     +
-
-Optional SAM 2 Module
+Optional SAM2 Module
 ```
 
 ---
 
 # 16. Confidence Estimation
 
-Each annotation should include a confidence score.
+每个 annotation 都应该包含 confidence。
 
-For example:
+例如：
 
 ```json
 {
@@ -938,7 +771,7 @@ For example:
 }
 ```
 
-Multiple signals can be combined:
+可以将多个信号组合：
 
 $$
 C =
@@ -949,92 +782,73 @@ w_o C_{object}
 w_t C_{temporal}
 $$
 
-where:
+其中：
 
-* \(C_{action}\): action recognition confidence
-* \(C_{object}\): object recognition confidence
-* \(C_{temporal}\): temporal segmentation confidence
+* \(C_{action}\)：action recognition confidence
+* \(C_{object}\)：object recognition confidence
+* \(C_{temporal}\)：temporal segmentation confidence
 
 ---
 
-# 17. Confidence-Driven Human Review
+# 17. Confidence-driven Human Review
 
-This is an important product feature.
+这是系统的重要产品特性。
 
-The user does not need to re-check every annotation. Instead, the system prioritizes low-confidence results.
+不要求用户重新检查所有 annotation，而是重点检查低置信度结果。
 
 ```mermaid
 flowchart TD
-
     A[AI Annotation] --> B[Confidence Score]
-
     B --> C{Confidence}
-
     C -->|High| D[Accept]
-
     C -->|Low| E[Human Review]
-
     E --> F[Edit]
-
     F --> G[Verified Annotation]
-
     D --> G
 ```
 
-For example:
+例如：
 
 ```text
 Action: pick
-
 Object: cup
-
 Confidence: 0.94
-
 Status: Accepted
 
 
 Action: pour
-
 Object: bottle
-
 Confidence: 0.51
-
 Status: Review Required
 ```
 
-This directly supports the business objective:
+这直接服务于业务目标：
 
-> AI does not need to be 100% correct. It needs to make human annotation at least 3× faster.
+> AI 不需要 100% 正确，而需要让人工标注速度提高至少 3 倍。
 
 ---
 
-# 18. Human-in-the-Loop
+# 18. Human-in-the-loop
 
-The system is not:
+系统不是：
 
 ```text
 Video → AI → Final Dataset
 ```
 
-Instead:
+而是：
 
 ```text
 Video
-
  ↓
-
 AI Draft
-
  ↓
-
 Human Review
-
  ↓
-
 Corrected Dataset
 ```
 
-AI-generated annotations should be explicitly marked as:
+AI annotation 应明确标记为：
 
 ```json
 {
@@ -1043,7 +857,7 @@ AI-generated annotations should be explicitly marked as:
 }
 ```
 
-After human modification:
+人工修改后：
 
 ```json
 {
@@ -1056,27 +870,21 @@ After human modification:
 
 # 19. Annotation Versioning
 
-It is not recommended to directly overwrite AI-generated results.
+不建议直接覆盖 AI 生成的结果。
 
-Instead:
+采用：
 
 ```text
 Annotation v1
-
      ↓
-
 Human Edit
-
      ↓
-
 Annotation v2
-
      ↓
-
 Final
 ```
 
-For example:
+例如：
 
 ```json
 {
@@ -1086,18 +894,18 @@ For example:
 }
 ```
 
-This enables the system to:
+这样能够：
 
-* Preserve the original AI output;
-* Track human modifications;
-* Support auditing;
-* Use human-corrected annotations for future model training.
+* 保留 AI 原始结果；
+* 追踪人工修改；
+* 支持审计；
+* 将人工修正结果用于未来模型训练。
 
 ---
 
 # 20. Annotation Data Model
 
-Recommended core data structure:
+推荐核心数据结构：
 
 ```json
 {
@@ -1135,7 +943,7 @@ Recommended core data structure:
 
 # 21. Pydantic Schema
 
-The backend uses Pydantic to strictly validate annotations.
+后端使用 Pydantic 对 annotation 进行严格验证。
 
 ```python
 from pydantic import BaseModel, Field
@@ -1160,65 +968,50 @@ class VideoAnnotation(BaseModel):
     segments: list[AnnotationSegment]
 ```
 
-This ensures:
+这样可以确保：
 
 ```text
 AI Pipeline
-
       ↓
-
 Pydantic
-
       ↓
-
 Valid JSON
 ```
 
-and therefore improves the reliability of JSON export.
+从而提高 JSON export 的可靠性。
 
 ---
 
 # 22. Backend Architecture
 
-Recommended technology stack:
+推荐：
 
 ```text
 Python
-
 FastAPI
-
 Pydantic
-
 FFmpeg
-
 OpenCV
 ```
 
-The API should not synchronously wait for the entire AI pipeline to finish.
+API 不应该同步等待整个 AI Pipeline。
 
-Not recommended:
+不推荐：
 
 ```text
 POST /upload
-
       ↓
-
 AI inference
-
       ↓
-
 HTTP waits 60–120 sec
-
       ↓
-
 response
 ```
 
-Recommended:
+推荐：
 
 ```mermaid
 sequenceDiagram
-
     participant U as User
     participant API as FastAPI
     participant W as Worker
@@ -1226,29 +1019,22 @@ sequenceDiagram
     participant DB as Annotation Store
 
     U->>API: POST /videos
-
     API->>W: Create Job
-
     API-->>U: job_id
 
     W->>AI: Process Video
-
     AI->>DB: Save Draft Annotation
 
     U->>API: GET /jobs/{id}
-
     API-->>U: processing / completed
 
     U->>API: GET /annotations/{id}
-
     API-->>U: Annotation
 
     U->>API: PUT /annotations/{id}
-
     API->>DB: Save Human Revision
 
     U->>API: GET /export/{id}
-
     API-->>U: JSON / CSV
 ```
 
@@ -1262,7 +1048,7 @@ sequenceDiagram
 POST /api/videos
 ```
 
-Response:
+Response：
 
 ```json
 {
@@ -1278,7 +1064,7 @@ Response:
 GET /api/jobs/{job_id}
 ```
 
-Response:
+Response：
 
 ```json
 {
@@ -1306,7 +1092,7 @@ PUT /api/videos/{video_id}/annotation
 GET /api/videos/{video_id}/export?format=json
 ```
 
-or:
+或：
 
 ```http
 GET /api/videos/{video_id}/export?format=csv
@@ -1316,27 +1102,22 @@ GET /api/videos/{video_id}/export?format=csv
 
 # 24. Frontend Design
 
-Since the Hackathon explicitly discourages excessive investment in UI, the frontend should implement only the necessary functionality.
+由于 Hackathon 明确要求不要过度投入 UI，因此前端只实现必要功能。
 
 ```mermaid
 flowchart TB
-
     A[Upload Page] --> B[Processing]
-
     B --> C[Annotation Page]
 
     C --> D[Video Player]
-
     C --> E[Timeline]
-
     C --> F[Annotation Editor]
 
     F --> G[Save]
-
     G --> H[Export JSON / CSV]
 ```
 
-Core page:
+核心页面：
 
 ```text
 ┌─────────────────────────────────────────┐
@@ -1370,11 +1151,11 @@ Core page:
 
 # 25. Robot Integration
 
-Robot control is outside the scope of the current Hackathon.
+机器人控制不属于当前 Hackathon Scope。
 
-However, the annotation schema should preserve the ability to support future extensions.
+但是 annotation schema 应该保留未来扩展能力。
 
-Current representation:
+当前：
 
 ```json
 {
@@ -1383,37 +1164,30 @@ Current representation:
 }
 ```
 
-Future mapping:
+未来可以映射：
 
 ```mermaid
 flowchart LR
-
     A[Human Action] --> B[Semantic Action]
-
     B --> C[Robot Skill]
-
     C --> D[Motion Planner]
-
     D --> E[Robot Controller]
 ```
 
-For example:
+例如：
 
 ```text
 Human:
-
 pick cup
 
         ↓
 
 Semantic representation:
-
 pick(cup)
 
         ↓
 
 Robot skill:
-
 grasp(cup)
 
         ↓
@@ -1425,76 +1199,71 @@ Motion planning
 Unitree G1 + Dexterous Hand
 ```
 
-Therefore, the long-term positioning of the current system is:
+因此当前系统的长期定位是：
 
-> **Human Video → Structured Action Representation → Robot Learning Dataset**
+> Human Video → Structured Action Representation → Robot Learning Dataset
 
-rather than directly:
+而不是直接：
 
-> **Video → Robot Control**
+> Video → Robot Control
 
 ---
 
-# 26. Dataset Strategy
+# 26. 数据集策略
 
-The project can use either public datasets or self-recorded videos.
+项目允许使用公开数据集或者自行拍摄视频。
 
-Recommended combination:
+推荐组合：
 
 ### Development Dataset
 
-Record 20–50 simple videos ourselves.
+自行拍摄 20–50 个简单视频。
 
-For example:
+例如：
 
 ```text
 pick cup
-
 place cup
-
 pour water
-
 open drawer
-
 close drawer
-
 move bottle
 ```
 
-Advantages:
+优点：
 
-* The action ontology is controllable;
-* Video conditions are controllable;
-* Ground truth can be created quickly;
-* Pipeline issues can be identified quickly.
+* action ontology 可控；
+* 视频条件可控；
+* 可以快速制作 ground truth；
+* 可以快速定位 pipeline 问题。
 
 ### Public Dataset
 
-Use:
+使用：
 
 * EPIC-KITCHENS
 * Assembly101
 
-for additional testing.
+进行额外测试。
 
-EPIC-KITCHENS is particularly suitable for verb+noun action representations, while Assembly101 is more suitable for multi-step manipulation scenarios.
+EPIC-KITCHENS 特别适合 verb+noun 类型的动作表示，而 Assembly101 更适合多步骤操作场景。
 
 ---
 
 # 27. Evaluation
 
-## 27.1 Step-Level F1
+## 27.1 Step-level F1
 
-Compare predicted action segments against ground truth.
+将预测的 action segments 与 ground truth 对比。
 
-Basic form:
+基本形式：
 
 $$
 F_1 =
 \frac{2PR}{P+R}
 $$
 
-Target:
+目标：
 
 $$
 F_1 \geq 0.75
@@ -1504,19 +1273,19 @@ $$
 
 # 28. Temporal Boundary Error
 
-For a predicted segment:
+对于预测 segment：
 
 $$
 \hat{s}, \hat{e}
 $$
 
-and ground truth:
+ground truth：
 
 $$
 s, e
 $$
 
-the following metric can be used:
+可以计算：
 
 $$
 E_{boundary}
@@ -1526,19 +1295,17 @@ E_{boundary}
 }{2}
 $$
 
-Target:
+目标：
 
 $$
 E_{boundary} \leq 2s
 $$
 
-In actual evaluation, it is recommended to report:
+实际评估时建议同时报告：
 
 ```text
 Mean Start Error
-
 Mean End Error
-
 Mean Boundary Error
 ```
 
@@ -1546,7 +1313,7 @@ Mean Boundary Error
 
 # 29. Action / Object Accuracy
 
-Action accuracy:
+分别计算：
 
 $$
 Accuracy_{action}
@@ -1555,7 +1322,7 @@ Accuracy_{action}
 {N_{all\ actions}}
 $$
 
-Object accuracy:
+以及：
 
 $$
 Accuracy_{object}
@@ -1564,7 +1331,7 @@ Accuracy_{object}
 {N_{all\ objects}}
 $$
 
-Target:
+目标：
 
 $$
 Accuracy \geq 0.80
@@ -1574,45 +1341,36 @@ $$
 
 # 30. Processing Time
 
-Measure:
+测量：
 
 ```text
 Upload
-
 +
-
 Preprocessing
-
 +
-
 AI inference
-
 +
-
 Postprocessing
 ```
 
-Requirement:
+要求：
 
 $$
 T_{processing} \leq 120s
 $$
 
-Recommended metrics:
+建议记录：
 
 ```text
 Video duration
-
 Processing time
-
 Real-time factor
 ```
 
-For example:
+例如：
 
 ```text
 Video duration: 20 sec
-
 Processing: 43 sec
 
 RTF = 43 / 20 = 2.15
@@ -1622,43 +1380,31 @@ RTF = 43 / 20 = 2.15
 
 # 31. Export Validation
 
-JSON:
+JSON：
 
 ```text
 Generated
-
  ↓
-
 Pydantic validation
-
  ↓
-
 JSON serialization
-
  ↓
-
 Schema validation
 ```
 
-CSV:
+CSV：
 
 ```text
 Annotation
-
  ↓
-
 DataFrame
-
  ↓
-
 CSV
-
  ↓
-
 Column validation
 ```
 
-Requirement:
+要求：
 
 $$
 Export\ Success\ Rate = 100\%
@@ -1668,7 +1414,7 @@ $$
 
 # 32. Manual Work Reduction
 
-The final evaluation should verify:
+最终需要验证：
 
 $$
 Speedup =
@@ -1676,7 +1422,7 @@ Speedup =
 {T_{AI}+T_{human}}
 $$
 
-For example:
+例如：
 
 $$
 T_{manual}=20min
@@ -1690,20 +1436,20 @@ $$
 T_{human}=3min
 $$
 
-Then:
+则：
 
 $$
 Speedup =
 \frac{20}{1+3}=5
 $$
 
-Therefore:
+因此：
 
 ```text
 5× faster
 ```
 
-which exceeds the requirement:
+超过要求：
 
 $$
 Speedup \geq 3
@@ -1711,47 +1457,36 @@ $$
 
 ---
 
-# 33. Three-Person Team Technical Responsibilities
+# 33. 三人团队技术分工
 
 ## AI Engineer 1 — AI Pipeline
 
-Responsibilities:
+负责：
 
 ```text
 Video preprocessing
-
 Frame sampling
-
 Visual embeddings
-
 Temporal segmentation
-
 VLM integration
-
 Action recognition
-
 Object recognition
-
 Keyframe selection
-
 Confidence estimation
-
 Annotation schema
 ```
 
-Core interface:
+核心接口：
 
 ```python
 annotation = pipeline.process(video_path)
 ```
 
-Goal:
+目标：
 
 ```text
 Video
-
  ↓
-
 Annotation JSON
 ```
 
@@ -1759,43 +1494,29 @@ Annotation JSON
 
 ## AI Engineer 2 — Backend / Frontend / Integration
 
-Responsibilities:
+负责：
 
 ```text
 FastAPI
-
 Video Upload
-
 Job Management
-
 Annotation CRUD
-
 JSON / CSV Export
-
 React UI
-
 Timeline
-
 Annotation Editor
-
 AI Pipeline Integration
 ```
 
-Core goal:
+核心目标：
 
 ```text
 Browser
-
  ↓
-
 FastAPI
-
  ↓
-
 AI Pipeline
-
  ↓
-
 Annotation
 ```
 
@@ -1803,39 +1524,27 @@ Annotation
 
 ## AI Product
 
-Responsibilities:
+负责：
 
 ```text
 Action / Object Ontology
-
 User Journey
-
 Business Requirements
-
 Evaluation Dataset
-
 Ground Truth
-
 Evaluation Metrics
-
 Demo Scenario
-
 Product Narrative
-
 Final Presentation
 ```
 
-The product role also coordinates:
+同时负责协调：
 
 ```text
 AI quality
-
 +
-
 UX
-
 +
-
 Business value
 ```
 
@@ -1843,11 +1552,10 @@ Business value
 
 # 34. Git Repository Structure
 
-Recommended structure:
+推荐：
 
 ```text
 video-annotation/
-
 │
 ├── backend/
 │   ├── app/
@@ -1907,189 +1615,147 @@ video-annotation/
 
 ---
 
-# 35. Five-Day Development Plan
+# 35. 五天开发计划
 
 ## Day 1 — Risk Reduction
 
-Goal:
+目标：
 
 > **Video → Annotation JSON**
 
 ### AI Engineer 1
 
-Complete:
+完成：
 
 ```text
 Video preprocessing
-
 Frame sampling
-
 Segmentation PoC
-
 VLM PoC
-
 Action/Object recognition
-
 JSON schema
 ```
 
 ### AI Engineer 2
 
-Complete:
+完成：
 
 ```text
 FastAPI skeleton
-
 Video upload
-
 Job model
-
 Job status API
 ```
 
 ### AI Product
 
-Complete:
+完成：
 
 ```text
 Ontology
-
 Evaluation criteria
-
 Demo scenarios
-
 Ground truth definition
-
 Product flow
 ```
 
 ### Day 1 Acceptance Criteria
 
-The system must be able to:
+必须能够：
 
 ```text
 upload.mp4
-
      ↓
-
 AI pipeline
-
      ↓
-
 annotation.json
 ```
 
-Even if the UI is not yet complete.
+哪怕 UI 尚未完成。
 
 ---
 
-# 36. Day 2 — Stabilize the AI Pipeline
+# 36. Day 2 — Stabilize AI Pipeline
 
-Goal:
+目标：
 
 ```text
 Video
-
  ↓
-
 Segmentation
-
  ↓
-
 Recognition
-
  ↓
-
 Keyframe
-
  ↓
-
 Confidence
-
  ↓
-
 Valid JSON
 ```
 
-Focus areas:
+重点：
 
-* Improve temporal boundaries;
-* Constrain the action/object vocabulary;
-* Optimize VLM prompts;
-* Test 5–10 videos;
-* Measure processing time.
+* 提高 temporal boundary；
+* 限制 action/object vocabulary；
+* 优化 VLM prompt；
+* 测试 5–10 个视频；
+* 测量 processing time。
 
-By the end of Day 2:
+Day 2 结束时：
 
 ```python
 annotation = pipeline.process(video)
 ```
 
-should run reliably.
+应该稳定运行。
 
 ---
 
-# 37. Day 3 — Human-in-the-Loop
+# 37. Day 3 — Human-in-the-loop
 
-Goal:
+目标：
 
 ```text
 AI Annotation
-
  ↓
-
 Timeline
-
  ↓
-
 Edit
-
  ↓
-
 Save
-
  ↓
-
 Export
 ```
 
 ### Engineer 1
 
-Focus:
+重点：
 
 ```text
 AI Pipeline stabilization
-
 API integration
-
 Confidence
 ```
 
 ### Engineer 2
 
-Focus:
+重点：
 
 ```text
 Video Player
-
 Timeline
-
 Annotation Editor
-
 Export
 ```
 
 ### Product
 
-Focus:
+重点：
 
 ```text
 UX testing
-
 Ground truth
-
 Evaluation
-
 Demo narrative
 ```
 
@@ -2097,27 +1763,21 @@ Demo narrative
 
 # 38. Day 4 — Evaluation & Robustness
 
-Stop large-scale development of new features.
+停止大规模开发新功能。
 
-Focus:
+重点：
 
 ```text
 Benchmark
-
  ↓
-
 Find bottleneck
-
  ↓
-
 Optimize
-
  ↓
-
 Regression test
 ```
 
-Record:
+记录：
 
 | Metric                |    Target |
 | --------------------- | --------: |
@@ -2129,19 +1789,17 @@ Record:
 | Export Success        |      100% |
 | Manual Work Reduction |      ≥ 3× |
 
-If:
+如果：
 
 ```text
 Action accuracy = 92%
-
 Object accuracy = 88%
-
 Step F1 = 0.58
 ```
 
-do not continue optimizing classification.
+则不要继续优化 classification。
 
-The main focus should instead be:
+应该重点优化：
 
 ```text
 Temporal Segmentation
@@ -2151,267 +1809,228 @@ Temporal Segmentation
 
 # 39. Day 5 — Demo & Presentation
 
-Day 5 principle:
+Day 5 原则：
 
-> **Do not make high-risk architectural changes.**
+> 不进行高风险架构修改。
 
-Workflow:
+流程：
 
 ```mermaid
 flowchart LR
-
     A[Final System Test] --> B[Benchmark]
-
     B --> C[Demo Rehearsal]
-
     C --> D[Backup]
-
     D --> E[Presentation]
-
     E --> F[Final Demo]
 ```
 
-Prepare at least:
+准备至少：
 
 ```text
 Demo Video 1
-
 Demo Video 2
-
 Demo Video 3
 ```
 
-Also prepare an offline fallback:
+同时准备一个 offline fallback：
 
 ```text
 Precomputed annotation
 ```
 
-If the API, GPU, or network fails during the presentation, the demo can still be completed.
+如果现场 API / GPU / 网络出现问题，可以继续完成 Demo。
 
 ---
 
 # 40. Demo Scenario
 
-A simple and easy-to-understand action sequence is recommended.
+建议 Demo 使用一个非常容易理解的动作链。
 
-For example:
+例如：
 
 ```text
 Pick up cup
-
       ↓
-
 Pour water
-
       ↓
-
 Place cup
 ```
 
-The user uploads a video.
+用户上传视频。
 
-The system displays:
+系统显示：
 
 ```text
 Processing...
 
 Extracting frames
-
 Detecting actions
-
 Recognizing objects
-
 Selecting keyframes
 ```
 
-Result:
+得到：
 
 ```text
 00:00 – 04:20
-
 PICK / CUP
 
 04:20 – 10:30
-
 POUR / CUP
 
 10:30 – 15:80
-
 PLACE / CUP
 ```
 
-Then intentionally demonstrate one AI error:
+然后故意展示一个 AI 错误：
 
 ```text
 AI prediction:
 
 POUR / BOTTLE
-
 confidence = 0.51
 ```
 
-The user corrects it:
+用户修改：
 
 ```text
 BOTTLE → CUP
 ```
 
-Then:
+然后：
 
 ```text
 Save
-
  ↓
-
 Verified = true
-
  ↓
-
 Export JSON
 ```
 
-This demonstrates the complete end-to-end workflow.
+最终形成完整闭环。
 
 ---
 
 # 41. Final Demo Story
 
-The demo should not focus primarily on:
+Demo 不应该重点展示：
 
 ```text
-Which models we used
+我们使用了什么模型
 ```
 
-Instead, it should demonstrate:
+而应该展示：
 
 ```text
 Problem
-
  ↓
-
 Manual annotation takes 15–30 minutes
-
  ↓
-
 AI generates draft annotation
-
  ↓
-
 Human only checks uncertain segments
-
  ↓
-
 Annotation corrected in seconds
-
  ↓
-
 Export dataset
-
  ↓
-
 Future robot learning
 ```
 
-The key message is:
+最终强调：
 
 > **The system does not try to remove the human from the loop. It removes unnecessary manual work.**
 
 ---
 
-# 42. Key Trade-offs in System Design
+# 42. 系统设计中的关键 Trade-offs
 
 ## 42.1 VLM vs. Dedicated Action Recognition Model
 
-### Dedicated Model
+### Dedicated model
 
-Advantages:
+优点：
 
-* Stable inference;
-* Predictable latency;
-* Can be optimized for a specific dataset.
+* 推理稳定；
+* latency 可控；
+* 可以针对数据集优化。
 
-Disadvantages:
+缺点：
 
-* Requires training;
-* Fixed ontology;
-* Insufficient time for training during the Hackathon.
+* 需要训练；
+* ontology 固定；
+* Hackathon 时间不足。
 
 ### VLM
 
-Advantages:
+优点：
 
-* Zero-shot / few-shot capabilities;
-* Fast development;
-* More flexible for new actions.
+* zero/few-shot；
+* 快速开发；
+* 对新 action 更灵活。
 
-Disadvantages:
+缺点：
 
-* Weaker temporal precision;
-* Potentially higher latency / cost;
-* Output requires schema constraints.
+* temporal precision 较弱；
+* latency / cost 可能较高；
+* 输出需要 schema constraint。
 
-Therefore, the final architecture uses:
+因此最终采用：
 
 ```text
 VLM
-
 +
-
 Temporal Algorithm
 ```
 
 ---
 
-# 43. Why Not Let the VLM Do Everything?
+# 43. 为什么不直接让 VLM 做全部工作？
 
-Because:
+因为：
 
 ```text
 VLM
-
  ↓
-
 "Person picks up a cup around 2 seconds"
 ```
 
-does not necessarily mean:
+并不意味着：
 
 ```text
 start = 1.87
-
 end = 4.31
 ```
 
-Temporal boundaries require a more stable temporal signal.
+时间边界需要更加稳定的 temporal signal。
 
-Therefore:
+因此：
 
 ```text
 Temporal Algorithm
-
       +
-
 VLM
 ```
 
-is more suitable for this project than:
+比：
 
 ```text
 VLM alone
 ```
 
+更加适合本项目。
+
 ---
 
-# 44. Why Is Human-in-the-Loop Necessary?
+# 44. 为什么需要 Human-in-the-loop？
 
-The objective is not:
+目标不是：
 
 $$
 Accuracy = 100\%
 $$
 
-Instead:
+而是：
 
 $$
 Cost_{AI+Human}
@@ -2419,63 +2038,56 @@ Cost_{AI+Human}
 \frac{1}{3}Cost_{Manual}
 $$
 
-Even if the AI makes some errors, the system can still provide significant business value as long as:
+即使 AI 存在一定错误，只要：
 
 ```text
 AI generates 80–90% correct draft
-
 +
-
 Human quickly fixes remaining errors
 ```
 
+依然能够实现业务价值。
+
 ---
 
-# 45. Future Extensions
+# 45. 未来扩展
 
-Current system:
+当前系统：
 
 ```text
 Video
-
  ↓
-
 Structured Annotation
 ```
 
-Future architecture:
+未来：
 
 ```mermaid
 flowchart LR
-
     A[Human Video] --> B[Action Annotation]
-
     B --> C[Human Verification]
-
     C --> D[Robot Dataset]
-
     D --> E[Robot Skill Learning]
-
     E --> F[Unitree G1]
 ```
 
-Potential future extensions include:
+进一步可以加入：
 
-* SAM 2 object tracking;
-* Hand-object interaction;
-* Object trajectory;
-* Robot skill mapping;
-* Demonstration learning;
-* Imitation Learning;
-* VLA models.
+* SAM 2 object tracking；
+* Hand-object interaction；
+* Object trajectory；
+* Robot skill mapping；
+* Demonstration learning；
+* Imitation Learning；
+* VLA models。
 
-However, these are outside the scope of the current Hackathon MVP.
+但是这些不属于当前 Hackathon MVP。
 
 ---
 
-# 46. Final Technical Solution Summary
+# 46. 最终技术方案总结
 
-The recommended final architecture is:
+最终推荐方案：
 
 ```text
                  ┌──────────────────┐
@@ -2538,23 +2150,23 @@ The recommended final architecture is:
           Future Robot Dataset
 ```
 
-The core principles can be summarized as follows:
+核心原则可以总结为：
 
-1. **Do not train a large model from scratch.**
-2. **Temporal Segmentation is the core technical challenge of the AI pipeline.**
-3. **Use a hybrid architecture combining visual signals and VLMs.**
-4. **Use a constrained ontology for actions and objects instead of free-form text.**
-5. **Let the VLM handle semantic understanding rather than relying on it alone for precise temporal localization.**
-6. **Treat SAM 2 as an optional module rather than a core dependency.**
-7. **AI output must be treated as a draft, with human verification as an integral part of the system workflow.**
-8. **Use confidence-driven human review to maximize annotation efficiency.**
-9. **Use structured JSON with Pydantic validation for annotations.**
-10. **Use asynchronous jobs on the backend to avoid long-running HTTP blocking.**
-11. **Implement only Timeline + Editor + Export in the UI instead of investing heavily in visual design.**
-12. **Avoid high-risk technical changes on Day 5.**
-13. **The final demo should demonstrate the complete business workflow rather than merely showing model predictions.**
-14. **Reserve architectural capacity for Robot Skill Mapping, but do not implement robot control in the current MVP.**
+1. **不要从零训练大模型。**
+2. **Temporal Segmentation 是 AI Pipeline 的核心难点。**
+3. **采用 Visual Signal + VLM 的 Hybrid Architecture。**
+4. **Action/Object 使用受限 ontology，而不是自由文本。**
+5. **VLM 负责 semantic understanding，而不是单独负责精确 temporal localization。**
+6. **SAM 2 作为 optional module，而不是核心依赖。**
+7. **AI 输出必须是 Draft，Human Verification 是系统正式流程的一部分。**
+8. **使用 confidence 驱动人工复核，最大化人工效率。**
+9. **Annotation 使用结构化 JSON + Pydantic validation。**
+10. **Backend 使用异步 Job，避免长时间 HTTP blocking。**
+11. **UI 只实现 Timeline + Editor + Export，不投入大量时间做视觉设计。**
+12. **第五天原则上不再进行高风险技术改动。**
+13. **最终 Demo 应展示完整业务闭环，而不仅仅是模型预测。**
+14. **系统架构预留 Robot Skill Mapping，但当前不实现机器人控制。**
 
-Final product positioning:
+最终产品定位：
 
 > **An AI-assisted, human-in-the-loop video annotation system that converts human demonstrations into structured action datasets for future computer vision and robot learning applications.**
