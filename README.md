@@ -2,6 +2,8 @@
 
 AI Talent Hack 2026
 
+> AI Generrated content, Haven't review yet
+
 ## 1. Project Overview
 
 ### 1.1 Project Background
@@ -102,23 +104,15 @@ The system is primarily intended for:
 ## 2.2 User Workflow
 
 ```mermaid
-flowchart LR
+flowchart TD
 
-    A[Upload Video] --> B[AI Processing]
+    A[Upload Video/Rules] --> B[Preprocess Video]
 
-    B --> C[Automatic Annotation]
+    B --> C[Auto Temporal Segmentation]
 
-    C --> D[Review Timeline]
+    C --> D[Human Review]
 
-    D --> E{Need Correction?}
-
-    E -->|Yes| F[Edit Annotation]
-
-    E -->|No| G[Verify]
-
-    F --> G
-
-    G --> H[Export JSON / CSV]
+    D --> E[Export JSON / CSV]
 ```
 
 ## 2.3 Core Business Value
@@ -132,15 +126,7 @@ Manual annotation:
 Target:
 
 ```text
-AI processing
-
-+
-
-Human verification
-
-<
-
-1/3 of manual annotation time
+AI processing + Human verification < 1/3 of manual annotation time
 ```
 
 For example:
