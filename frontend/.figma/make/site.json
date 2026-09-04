@@ -1,0 +1,10 @@
+{
+  "description": "Automates video action labeling with AI, enabling users to upload videos, preview results, and manually adjust action annotations via an interactive timeline.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

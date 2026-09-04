@@ -2,7 +2,7 @@
 
 AI Talent Hack 2026
 
-> AI Generrated content, Haven't review yet
+> AI Generrated content, Haven't reviewed yet
 
 ## 1. Project Overview
 
