@@ -90,3 +90,28 @@ def test_stats_and_vacuum(tmp_path, fake_video):
     (store.array_dir / "orphan.npy").write_bytes(b"\x00")
     assert store.vacuum() == 1
     assert store.stats()["entries"] == 2  # index untouched
+
+
+def test_moving_the_tree_keeps_the_entry(tmp_path):
+    src = tmp_path / "a" / "rec" / "clip.mp4"
+    src.parent.mkdir(parents=True)
+    src.write_bytes(b"video bytes")
+    store = EmbeddingStore(tmp_path / "store")
+    store.put(_key(src), np.ones((3, 4), dtype=np.float32))
+
+    moved = tmp_path / "b" / "rec" / "clip.mp4"
+    moved.parent.mkdir(parents=True)
+    src.rename(moved)  # rename keeps mtime and size
+    (tmp_path / "store").rename(tmp_path / "store2")
+    assert EmbeddingStore(tmp_path / "store2").get(_key(moved)) is not None
+
+
+def test_migrate_rekeys_old_rows(tmp_path, fake_video):
+    store = EmbeddingStore(tmp_path / "store")
+    store.put(_key(fake_video), np.zeros((2, 4), dtype=np.float32))
+    with store._connect() as con:
+        con.execute("UPDATE embeddings SET key_hash = 'old', npy_path = ?", (str(store.array_dir / "old.npy"),))
+    (store.array_dir / next(store.array_dir.glob("*.npy")).name).rename(store.array_dir / "old.npy")
+    assert store.get(_key(fake_video)) is None
+    assert store.migrate() == 1
+    assert store.get(_key(fake_video)) is not None
