@@ -40,6 +40,8 @@ html.light-theme {
   --color-text: #1a1d2e;
   --color-text-muted: #7a8099;
   --color-text-dim: #4a5068;
+  --color-accent: #00b48c;
+  --color-accent-dim: #009170;
   --color-accent-glow: rgba(0, 180, 140, 0.1);
 }
 

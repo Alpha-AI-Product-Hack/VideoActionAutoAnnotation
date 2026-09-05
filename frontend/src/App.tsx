@@ -20,6 +20,9 @@ interface VideoRecord {
   status: "staged" | "pending" | "processing" | "done" | "error";
   uploadedAt: string;
   actions: Action[];
+  file: File;
+  localUrl: string;
+  errorMessage?: string;
 }
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -43,11 +46,11 @@ const MOCK_ACTIONS: Action[] = [
 ];
 
 const MOCK_VIDEOS: VideoRecord[] = [
-  { id: "v1", name: "kitchen_trial_01.mp4", duration_ms: 20000, status: "done", uploadedAt: "2026-09-03 09:14", actions: MOCK_ACTIONS },
-  { id: "v2", name: "workspace_recording_03.mp4", duration_ms: 45000, status: "processing", uploadedAt: "2026-09-03 10:02", actions: [] },
-  { id: "v3", name: "assembly_line_v2.mp4", duration_ms: 60000, status: "pending", uploadedAt: "2026-09-03 10:45", actions: [] },
-  { id: "v5", name: "test_clip_staged.mp4", duration_ms: 15000, status: "staged", uploadedAt: "2026-09-03 11:45", actions: [] },
-  { id: "v4", name: "lab_session_07.mp4", duration_ms: 30000, status: "error", uploadedAt: "2026-09-03 11:20", actions: [] },
+  { id: "v1", name: "kitchen_trial_01.mp4", duration_ms: 20000, status: "done", uploadedAt: "2026-09-03 09:14", actions: MOCK_ACTIONS, file: new File([], "kitchen_trial_01.mp4"), localUrl: "" },
+  { id: "v2", name: "workspace_recording_03.mp4", duration_ms: 45000, status: "processing", uploadedAt: "2026-09-03 10:02", actions: [], file: new File([], "workspace_recording_03.mp4"), localUrl: "" },
+  { id: "v3", name: "assembly_line_v2.mp4", duration_ms: 60000, status: "pending", uploadedAt: "2026-09-03 10:45", actions: [], file: new File([], "assembly_line_v2.mp4"), localUrl: "" },
+  { id: "v5", name: "test_clip_staged.mp4", duration_ms: 15000, status: "staged", uploadedAt: "2026-09-03 11:45", actions: [], file: new File([], "test_clip_staged.mp4"), localUrl: "" },
+  { id: "v4", name: "lab_session_07.mp4", duration_ms: 30000, status: "error", uploadedAt: "2026-09-03 11:20", actions: [], file: new File([], "lab_session_07.mp4"), localUrl: "" },
 ];
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
@@ -66,6 +69,70 @@ function actionColor(action: string): string {
 
 function confidencePct(c: number): string {
   return (c * 100).toFixed(1) + "%";
+}
+
+const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+
+function actionsToCsv(actions: Action[]): string {
+  const header = ["id", "start_ms", "end_ms", "action", "object", "keyframe_ms", "confidence", "model_version"];
+  const escape = (v: string) => `"${v.replaceAll('"', '""')}"`;
+  const rows = actions.map((a) => [
+    escape(a.id),
+    String(a.start_ms),
+    String(a.end_ms),
+    escape(a.action),
+    escape(a.object),
+    String(a.keyframe_ms),
+    String(a.confidence),
+    escape(a.model_version),
+  ]);
+  return [header.join(","), ...rows.map((r) => r.join(","))].join("\n");
+}
+
+function downloadText(text: string, filename: string, mime: string) {
+  const blob = new Blob([text], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function probeVideoDurationMs(url: string): Promise<number> {
+  return new Promise((resolve) => {
+    const el = document.createElement("video");
+    el.preload = "metadata";
+    el.onloadedmetadata = () => {
+      const ms = Number.isFinite(el.duration) ? Math.floor(el.duration * 1000) : 0;
+      resolve(ms);
+    };
+    el.onerror = () => resolve(0);
+    el.src = url;
+  });
+}
+
+function Toast({
+  message,
+  onClose,
+}: {
+  message: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed top-3 left-1/2 -translate-x-1/2 z-[60] w-[min(820px,calc(100vw-24px))]">
+      <div className="bg-[var(--color-panel)] border border-[var(--color-danger)] shadow-2xl rounded-lg px-3 py-2 flex items-start gap-2">
+        <div className="text-[var(--color-danger)] text-xs font-semibold mt-0.5">ERROR</div>
+        <div className="flex-1 text-[11px] text-[var(--color-text)] leading-relaxed break-words">{message}</div>
+        <button
+          onClick={onClose}
+          className="w-6 h-6 -mt-0.5 rounded flex items-center justify-center text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-panel-alt)] transition-colors text-sm"
+        >
+          ✕
+        </button>
+      </div>
+    </div>
+  );
 }
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -139,7 +206,13 @@ const ExportIcon = () => (
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
-function StatusBadge({ status }: { status: VideoRecord["status"] }) {
+function StatusBadge({
+  status,
+  onClick,
+}: {
+  status: VideoRecord["status"];
+  onClick?: () => void;
+}) {
   const map: Record<string, { label: string; color: string }> = {
     staged: { label: "STAGED", color: "#4a5180" },
     pending: { label: "PENDING", color: "#6b7291" },
@@ -148,14 +221,22 @@ function StatusBadge({ status }: { status: VideoRecord["status"] }) {
     error: { label: "ERROR", color: "#ff4d6a" },
   };
   const { label, color } = map[status];
-  return (
-    <span
-      style={{ color, borderColor: color + "40", fontFamily: "var(--font-mono)" }}
-      className="text-[10px] font-medium px-1.5 py-0.5 rounded border tracking-wider"
-    >
-      {label}
-    </span>
-  );
+  const common = {
+    style: { color, borderColor: color + "40", fontFamily: "var(--font-mono)" } as React.CSSProperties,
+    className: `text-[10px] font-medium px-1.5 py-0.5 rounded border tracking-wider ${
+      onClick ? "cursor-pointer hover:opacity-90" : ""
+    }`,
+  };
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} {...common}>
+        {label}
+      </button>
+    );
+  }
+
+  return <span {...common}>{label}</span>;
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -274,11 +355,13 @@ function LeftPanel({
   selectedVideoId: string | null;
   onSelectVideo: (id: string) => void;
   onAddVideo: (v: VideoRecord, select?: boolean) => void;
-  onSubmitPending: () => void;
+  onSubmitPending: (cfg: { rulesJson: string; fps: string; model: string }) => void;
   onDeleteVideo: (id: string) => void;
   onClearStaged: () => void;
 }) {
-  const [rulesJson, setRulesJson] = useState('{\n  "min_duration_ms": 500,\n  "min_confidence": 0.7,\n  "actions": ["pick_up", "put_down", "pour", "open", "close"]\n}');
+  const [rulesJson, setRulesJson] = useState(
+    '{\n  "actions": ["pick_up", "move", "put_down"],\n  "objects": ["cup", "glass"],\n  "min_duration_ms": 500,\n  "min_confidence": 0.7\n}',
+  );
   const [rulesFileName, setRulesFileName] = useState<string | null>(null);
   const [fps, setFps] = useState("30");
   const [model, setModel] = useState("pipeline-0.1");
@@ -287,23 +370,46 @@ function LeftPanel({
   const rulesFileRef = useRef<HTMLInputElement>(null);
 
   const hasStagedVideos = videos.some((v) => v.status === "staged");
-  const canSubmit = hasStagedVideos && rulesFileName !== null;
+  const rulesValid = (() => {
+    try {
+      const obj = JSON.parse(rulesJson);
+      if (!obj || typeof obj !== "object") return false;
+      return (
+        Array.isArray(obj.actions) &&
+        obj.actions.every((x: any) => typeof x === "string") &&
+        Array.isArray(obj.objects) &&
+        obj.objects.every((x: any) => typeof x === "string") &&
+        Number.isFinite(obj.min_duration_ms) &&
+        obj.min_duration_ms >= 0 &&
+        Number.isFinite(obj.min_confidence) &&
+        obj.min_confidence >= 0 &&
+        obj.min_confidence <= 1
+      );
+    } catch {
+      return false;
+    }
+  })();
+  const canSubmit = hasStagedVideos && rulesValid;
 
-  function handleVideoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleVideoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     const now = Date.now();
-    files.forEach((file, i) => {
+    for (const [i, file] of files.entries()) {
+      const localUrl = URL.createObjectURL(file);
+      const durationMs = await probeVideoDurationMs(localUrl);
       const newVideo: VideoRecord = {
         id: "v" + (now + i),
         name: file.name,
-        duration_ms: Math.floor(Math.random() * 60000 + 10000),
+        duration_ms: durationMs || 0,
         status: "staged",
         uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
         actions: [],
+        file,
+        localUrl,
       };
       onAddVideo(newVideo, i === 0);
-    });
+    }
     e.target.value = "";
   }
 
@@ -422,7 +528,7 @@ function LeftPanel({
             <button
               disabled={!canSubmit}
               onClick={() => {
-                onSubmitPending();
+                onSubmitPending({ rulesJson, fps, model });
               }}
               className={`w-full h-9 rounded text-xs font-semibold transition-colors ${
                 canSubmit
@@ -430,12 +536,12 @@ function LeftPanel({
                   : "bg-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed"
               }`}
             >
-              {!hasStagedVideos && !rulesFileName
-                ? "Upload video & rules to submit"
+              {!hasStagedVideos && !rulesValid
+                ? "Upload video & valid rules to submit"
                 : !hasStagedVideos
                 ? "Upload a video to submit"
-                : !rulesFileName
-                ? "Upload rules to submit"
+                : !rulesValid
+                ? "Fix rules JSON to submit"
                 : "Submit to Annotation Queue"}
             </button>
           </div>
@@ -565,6 +671,7 @@ function CenterPanel({
   selectedActionId,
   onSelectAction,
   onUpdateAction,
+  onSplitAction,
   onAddAction,
   onDeleteAction,
   pendingEdits,
@@ -575,6 +682,7 @@ function CenterPanel({
   selectedActionId: string | null;
   onSelectAction: (id: string | null) => void;
   onUpdateAction: (a: Action) => void;
+  onSplitAction: (actionId: string, splitMs: number) => void;
   onAddAction: (atMs: number) => void;
   onDeleteAction: (id: string) => void;
   pendingEdits: Record<string, Action>;
@@ -587,6 +695,7 @@ function CenterPanel({
   const timelineRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const isDragging = useRef(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   // Confirm dialog state
   const [confirmSplit, setConfirmSplit] = useState(false);
@@ -673,8 +782,21 @@ function CenterPanel({
   function seekTo(ms: number) {
     const clamped = Math.max(0, Math.min(ms, duration));
     setCurrentMs(clamped);
+    if (videoRef.current) {
+      const t = clamped / 1000;
+      if (Number.isFinite(t)) {
+        videoRef.current.currentTime = t;
+      }
+    }
     onTimeChange?.(clamped);
   }
+
+  useEffect(() => {
+    setCurrentMs(0);
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+    }
+  }, [video?.id]);
 
   function handleTimelineClick(e: React.MouseEvent<HTMLDivElement>) {
     const rect = timelineRef.current?.getBoundingClientRect();
@@ -691,16 +813,6 @@ function CenterPanel({
     seekTo(Math.floor(ratio * duration));
   }
 
-  function executeSplit() {
-    const hit = actions.find((a) => a.start_ms <= currentMs && currentMs <= a.end_ms);
-    if (!hit) return;
-    // Remove the original, add two halves
-    onDeleteAction(hit.id);
-    onAddAction(hit.start_ms); // caller will create at currentMs start; we pass the split point
-    // We pass currentMs as a signal; onAddAction needs to support range — handled in App
-    setConfirmSplit(false);
-  }
-
   function executeDelete() {
     if (selectedActionId) onDeleteAction(selectedActionId);
     setConfirmDelete(false);
@@ -708,6 +820,7 @@ function CenterPanel({
 
   // What action is under the playhead (for Split)
   const hitAction = actions.find((a) => a.start_ms <= currentMs && currentMs <= a.end_ms);
+  const canSplit = !!hitAction && currentMs > hitAction.start_ms + 100 && currentMs < hitAction.end_ms - 100;
 
   const playheadPct = (currentMs / duration) * 100;
   const tickCount = Math.round(30 * zoom);
@@ -723,8 +836,9 @@ function CenterPanel({
           message={`Split "${hitAction.action}" into two segments at ${msToTimecode(currentMs)}? The second segment will have action and object set to "unknown".`}
           confirmLabel="Split"
           onConfirm={() => {
-            onUpdateAction({ ...hitAction, end_ms: currentMs, keyframe_ms: Math.min(hitAction.keyframe_ms, currentMs) });
-            onAddAction(currentMs);
+            if (canSplit) {
+              onSplitAction(hitAction.id, currentMs);
+            }
             setConfirmSplit(false);
           }}
           onCancel={() => setConfirmSplit(false)}
@@ -760,20 +874,18 @@ function CenterPanel({
                   height: "auto",
                 }}
               >
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent)] flex items-center justify-center mb-3">
-                    <PlayIcon />
-                  </div>
-                  <p className="text-xs text-[var(--color-text-muted)] font-mono">{video.name}</p>
-                </div>
-                <div className="absolute bottom-3 left-3 flex items-center gap-3">
-                  <span className="font-mono text-xs text-[var(--color-accent)] bg-black/70 px-2 py-0.5 rounded">
-                    {msToTimecode(currentMs)}
-                  </span>
-                  <span className="font-mono text-[10px] text-[var(--color-text-muted)] bg-black/70 px-2 py-0.5 rounded">
-                    / {msToTimecode(duration)}
-                  </span>
-                </div>
+                <video
+                  ref={videoRef}
+                  src={video.localUrl}
+                  className="absolute inset-0 w-full h-full object-contain"
+                  controls
+                  playsInline
+                  onTimeUpdate={() => {
+                    const ms = Math.floor((videoRef.current?.currentTime ?? 0) * 1000);
+                    setCurrentMs(ms);
+                    onTimeChange?.(ms);
+                  }}
+                />
               </div>
             </>
           ) : (
@@ -822,7 +934,7 @@ function CenterPanel({
         <div className="flex items-center gap-0.5">
           <button
             title={hitAction ? `Split "${hitAction.action}" at ${msToTimecode(currentMs)}` : "No action under playhead"}
-            disabled={!hitAction}
+            disabled={!canSplit}
             onClick={() => setConfirmSplit(true)}
             className="h-7 px-2.5 rounded flex items-center gap-1.5 text-[11px] font-medium text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-border)] transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
           >
@@ -889,7 +1001,7 @@ function CenterPanel({
         {/* Horizontally scrollable container for ruler + track */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-x-auto overflow-y-hidden min-h-0"
+          className="relative flex-1 overflow-x-auto overflow-y-hidden min-h-0"
           style={{ scrollbarWidth: "none" }}
           onWheel={handleTimelineWheel}
         >
@@ -1046,16 +1158,15 @@ function CenterPanel({
             <div className="absolute -top-0 left-1/2 -translate-x-1/2 w-2.5 h-2.5 bg-[var(--color-accent)] rotate-45 -mt-1" />
           </div>
 
-          {/* Empty state */}
-          {actions.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-xs text-[var(--color-text-muted)]">No annotations — run detection to populate timeline</span>
-            </div>
-          )}
         </div>
           );
         })()}
           </div>{/* end inner zoom div */}
+          {actions.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+              <span className="text-xs text-[var(--color-text-muted)]">No annotations — run detection to populate timeline</span>
+            </div>
+          )}
         </div>{/* end scrollRef */}
 
       </div>
@@ -1146,11 +1257,11 @@ const ActionEditor = ({
         &nbsp;·&nbsp; Model: <span className="text-[var(--color-text-dim)]">{local.model_version}</span>
       </div>
 
-      <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
         <button
           disabled={!hasChanges}
           onClick={() => { onChange(local); onClearPending?.(); }}
-          className={`w-full h-8 rounded text-xs font-semibold transition-colors ${
+          className={`flex-1 h-8 rounded text-xs font-semibold transition-colors ${
             hasChanges
               ? "bg-[var(--color-accent)] text-[var(--color-bg)] hover:bg-[var(--color-accent-dim)] cursor-pointer"
               : "bg-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed opacity-50"
@@ -1158,14 +1269,17 @@ const ActionEditor = ({
         >
           Apply Changes
         </button>
-        {hasChanges && (
-          <button
-            onClick={() => { setLocal(action); onClearPending?.(); }}
-            className="w-full h-7 rounded text-xs font-medium border border-[var(--color-border-light)] text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:border-[var(--color-danger)] transition-colors"
-          >
-            Cancel Changes
-          </button>
-        )}
+        <button
+          disabled={!hasChanges}
+          onClick={() => { setLocal(action); onClearPending?.(); }}
+          className={`flex-1 h-8 rounded text-xs font-medium border transition-colors ${
+            hasChanges
+              ? "border-[var(--color-border-light)] text-[var(--color-text-muted)] hover:text-[var(--color-danger)] hover:border-[var(--color-danger)]"
+              : "border-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed opacity-50"
+          }`}
+        >
+          Cancel Changes
+        </button>
       </div>
     </div>
   );
@@ -1301,42 +1415,67 @@ const I18N: Record<Lang, Record<string, string>> = {
   en: {
     appName: "ActionLabel",
     annotate: "Annotate",
-    export: "Export JSON",
+    export: "Export",
+    exportJson: "Export JSON",
+    exportCsv: "Export CSV",
     actions: "actions",
     noVideo: "No video selected",
-    exportFile: "annotations.json",
+    exportJsonFile: "annotations.json",
+    exportCsvFile: "annotations.csv",
   },
   zh: {
     appName: "动作标注",
     annotate: "标注",
-    export: "导出 JSON",
+    export: "导出",
+    exportJson: "导出 JSON",
+    exportCsv: "导出 CSV",
     actions: "个动作",
     noVideo: "未选择视频",
-    exportFile: "标注结果.json",
+    exportJsonFile: "标注结果.json",
+    exportCsvFile: "标注结果.csv",
   },
   ru: {
     appName: "ActionLabel",
     annotate: "Разметка",
-    export: "Экспорт JSON",
+    export: "Экспорт",
+    exportJson: "Экспорт JSON",
+    exportCsv: "Экспорт CSV",
     actions: "действий",
     noVideo: "Видео не выбрано",
-    exportFile: "аннотации.json",
+    exportJsonFile: "аннотации.json",
+    exportCsvFile: "аннотации.csv",
   },
 };
 
 // ─── App root ─────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [videos, setVideos] = useState<VideoRecord[]>(MOCK_VIDEOS);
-  const [selectedVideoId, setSelectedVideoId] = useState<string>("v1");
+  const [videos, setVideos] = useState<VideoRecord[]>([]);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const [dark, setDark] = useState(true);
   const [lang, setLang] = useState<Lang>("en");
   const [pendingEdits, setPendingEdits] = useState<Record<string, Action>>({});
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  const exportRef = useRef<HTMLDivElement>(null);
 
   const t = I18N[lang];
-  const selectedVideo = videos.find((v) => v.id === selectedVideoId) ?? null;
+  const selectedVideo = (selectedVideoId ? videos.find((v) => v.id === selectedVideoId) : null) ?? null;
   const actions = selectedVideo?.actions ?? [];
+
+  useEffect(() => {
+    if (!exportOpen) return;
+    function onDown(e: MouseEvent) {
+      const el = exportRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && !el.contains(e.target)) {
+        setExportOpen(false);
+      }
+    }
+    window.addEventListener("mousedown", onDown);
+    return () => window.removeEventListener("mousedown", onDown);
+  }, [exportOpen]);
 
   // Apply light/dark via CSS class on root element
   useEffect(() => {
@@ -1369,6 +1508,45 @@ export default function App() {
     setSelectedActionId(newAction.id);
   }
 
+  function handleSplitAction(actionId: string, splitMs: number) {
+    if (!selectedVideoId) return;
+    const target = actions.find((a) => a.id === actionId);
+    if (!target) return;
+
+    const minGap = 100;
+    const cut = Math.max(target.start_ms + minGap, Math.min(splitMs, target.end_ms - minGap));
+    if (cut <= target.start_ms || cut >= target.end_ms) return;
+
+    const left: Action = {
+      ...target,
+      end_ms: cut,
+      keyframe_ms: Math.min(target.keyframe_ms, cut),
+    };
+
+    const right: Action = {
+      id: "a" + Date.now() + "-split",
+      start_ms: cut,
+      end_ms: target.end_ms,
+      action: "unknown",
+      object: "unknown",
+      keyframe_ms: Math.floor((cut + target.end_ms) / 2),
+      confidence: target.confidence,
+      model_version: "manual",
+    };
+
+    const updated = actions
+      .flatMap((a) => (a.id === actionId ? [left, right] : [a]))
+      .sort((a, b) => a.start_ms - b.start_ms);
+
+    updateActions(selectedVideoId, updated);
+    setPendingEdits((prev) => {
+      const next = { ...prev };
+      delete next[actionId];
+      return next;
+    });
+    setSelectedActionId(right.id);
+  }
+
   function handleDeleteAction(id: string) {
     if (!selectedVideoId) return;
     updateActions(selectedVideoId, actions.filter((a) => a.id !== id));
@@ -1380,12 +1558,43 @@ export default function App() {
     if (select) { setSelectedVideoId(v.id); setSelectedActionId(null); }
   }
 
-  function handleSubmitPending() {
-    setVideos((vs) => vs.map((v) => v.status === "staged" ? { ...v, status: "pending" } : v));
+  async function handleSubmitPending(cfg: { rulesJson: string; fps: string; model: string }) {
+    const staged = videos.filter((v) => v.status === "staged");
+    if (staged.length === 0) return;
+
+    setVideos((vs) => vs.map((v) => v.status === "staged" ? { ...v, status: "pending", errorMessage: undefined } : v));
+
+    for (const v of staged) {
+      setVideos((vs) => vs.map((x) => x.id === v.id ? { ...x, status: "processing", errorMessage: undefined } : x));
+      try {
+        const form = new FormData();
+        form.append("video", v.file);
+        form.append("rules", cfg.rulesJson);
+        form.append("duration_ms", String(v.duration_ms));
+        form.append("fps", cfg.fps);
+        form.append("model", cfg.model);
+
+        const resp = await fetch(`${API_BASE}/api/annotate`, { method: "POST", body: form });
+        if (!resp.ok) {
+          const msg = await resp.text();
+          const detail = msg || `HTTP ${resp.status}`;
+          throw new Error(detail);
+        }
+        const data = await resp.json();
+        setVideos((vs) => vs.map((x) => x.id === v.id ? { ...x, status: "done", actions: data.actions ?? [] } : x));
+        if (selectedVideoId === null) setSelectedVideoId(v.id);
+      } catch (e: any) {
+        const msg = String(e?.message ?? e);
+        setToastMessage(`[${v.name}] ${msg}`);
+        setVideos((vs) => vs.map((x) => x.id === v.id ? { ...x, status: "error", errorMessage: msg } : x));
+      }
+    }
   }
 
   function handleClearStaged() {
-    const stagedIds = new Set(videos.filter((v) => v.status === "staged").map((v) => v.id));
+    const stagedItems = videos.filter((v) => v.status === "staged");
+    stagedItems.forEach((v) => v.localUrl && URL.revokeObjectURL(v.localUrl));
+    const stagedIds = new Set(stagedItems.map((v) => v.id));
     setVideos((vs) => vs.filter((v) => !stagedIds.has(v.id)));
     if (selectedVideoId && stagedIds.has(selectedVideoId)) {
       const remaining = videos.filter((v) => !stagedIds.has(v.id));
@@ -1395,6 +1604,8 @@ export default function App() {
   }
 
   function handleDeleteVideo(id: string) {
+    const item = videos.find((v) => v.id === id);
+    if (item?.localUrl) URL.revokeObjectURL(item.localUrl);
     setVideos((vs) => vs.filter((v) => v.id !== id));
     if (selectedVideoId === id) {
       const remaining = videos.filter((v) => v.id !== id);
@@ -1403,12 +1614,12 @@ export default function App() {
     }
   }
 
-  function handleExport() {
-    const blob = new Blob([JSON.stringify(actions, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url; a.download = t.exportFile; a.click();
-    URL.revokeObjectURL(url);
+  function handleExportJson() {
+    downloadText(JSON.stringify(actions, null, 2), t.exportJsonFile, "application/json");
+  }
+
+  function handleExportCsv() {
+    downloadText(actionsToCsv(actions), t.exportCsvFile, "text/csv");
   }
 
   const LANGS: { id: Lang; label: string }[] = [
@@ -1419,6 +1630,12 @@ export default function App() {
 
   return (
     <div className="h-full flex flex-col bg-[var(--color-bg)] overflow-hidden">
+      {toastMessage && (
+        <Toast
+          message={toastMessage}
+          onClose={() => setToastMessage(null)}
+        />
+      )}
       {/* Header */}
       <header className="flex-none h-11 flex items-center px-4 border-b border-[var(--color-border)] bg-[var(--color-panel)] z-10">
 
@@ -1449,7 +1666,14 @@ export default function App() {
           {selectedVideo ? (
             <>
               <span className="text-xs font-medium text-[var(--color-text)] truncate max-w-64">{selectedVideo.name}</span>
-              <StatusBadge status={selectedVideo.status} />
+              <StatusBadge
+                status={selectedVideo.status}
+                onClick={
+                  selectedVideo.status === "error"
+                    ? () => setToastMessage(`[${selectedVideo.name}] ${selectedVideo.errorMessage ?? "Unknown error"}`)
+                    : undefined
+                }
+              />
               <div className="w-px h-4 bg-[var(--color-border)]" />
               <span className="text-[11px] font-mono text-[var(--color-accent)] whitespace-nowrap">
                 {actions.length} {t.actions}
@@ -1493,18 +1717,38 @@ export default function App() {
           <div className="w-px h-5 bg-[var(--color-border)]" />
 
           {/* Export */}
-          <button
-            onClick={handleExport}
-            disabled={actions.length === 0}
-            className={`h-7 px-3 rounded text-[11px] font-semibold transition-colors flex items-center gap-1.5 ${
-              actions.length > 0
-                ? "border border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent-glow)]"
-                : "border border-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed opacity-50"
-            }`}
-          >
-            <ExportIcon />
-            {t.export}
-          </button>
+          <div ref={exportRef} className="relative">
+            <button
+              onClick={() => setExportOpen((v) => !v)}
+              disabled={actions.length === 0}
+              className={`h-7 px-3 rounded text-[11px] font-semibold transition-colors flex items-center gap-1.5 ${
+                actions.length > 0
+                  ? "border border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent-glow)]"
+                  : "border border-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed opacity-50"
+              }`}
+              title={actions.length === 0 ? "No actions to export" : undefined}
+            >
+              <ExportIcon />
+              {t.export}
+              <span className="text-[10px] opacity-70">▾</span>
+            </button>
+            {exportOpen && actions.length > 0 && (
+              <div className="absolute right-0 mt-1 w-40 rounded border border-[var(--color-border-light)] bg-[var(--color-panel)] shadow-2xl overflow-hidden z-50">
+                <button
+                  onClick={() => { handleExportJson(); setExportOpen(false); }}
+                  className="w-full px-3 py-2 text-left text-[11px] text-[var(--color-text)] hover:bg-[var(--color-panel-alt)] transition-colors"
+                >
+                  {t.exportJson}
+                </button>
+                <button
+                  onClick={() => { handleExportCsv(); setExportOpen(false); }}
+                  className="w-full px-3 py-2 text-left text-[11px] text-[var(--color-text)] hover:bg-[var(--color-panel-alt)] transition-colors"
+                >
+                  {t.exportCsv}
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
@@ -1525,6 +1769,7 @@ export default function App() {
           selectedActionId={selectedActionId}
           onSelectAction={setSelectedActionId}
           onUpdateAction={handleUpdateAction}
+          onSplitAction={handleSplitAction}
           onAddAction={handleAddAction}
           onDeleteAction={handleDeleteAction}
           pendingEdits={pendingEdits}
