@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "action-ranker"
+version = "0.1.0"
+description = "Frozen video-text ranking of action dictionaries on GT-cut clips"
+requires-python = ">=3.11"
+dependencies = [
+  "numpy>=1.26",
+  "scikit-learn>=1.4",
+]
+
+[project.optional-dependencies]
+torch = [
+  "torch>=2.2",
+  "transformers>=4.40",
+]
+video = [
+  "torchvision>=0.17",
+  "av>=12",
+]
+hf = [
+  "huggingface_hub>=0.23",
+]
+
+[project.scripts]
+action-ranker = "action_ranker.run:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
