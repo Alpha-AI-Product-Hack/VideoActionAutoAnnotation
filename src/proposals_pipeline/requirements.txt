@@ -1,0 +1,13 @@
+# torch/torchvision: install separately with the CUDA wheel for your GPU, e.g.
+#   pip install torch torchvision --index-url https://download.pytorch.org/whl/cu128
+transformers>=4.57
+accelerate
+huggingface_hub[hf_transfer]
+scipy
+numpy
+opencv-python-headless
+matplotlib
+tqdm
+pytest
+einops        # DDM-Net (action_boundaries/third_party/ddm_net)
+gdown         # downloads DDM-Net's checkpoint from Google Drive

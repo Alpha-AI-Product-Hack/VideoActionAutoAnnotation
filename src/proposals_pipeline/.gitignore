@@ -1,0 +1,11 @@
+# environments and caches
+.venv/
+.cache/
+__pycache__/
+.pytest_cache/
+*.pyc
+
+# datasets, model archives and transfer bundles (tens of GB, license-restricted)
+data/
+*.zip
+*.log
