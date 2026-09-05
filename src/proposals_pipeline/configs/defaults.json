@@ -1,0 +1,42 @@
+{
+  "benchmark": "none",
+  "objective": {
+    "metric": "f1",
+    "tolerance_s": 1.0
+  },
+  "sources": {
+    "abd": {
+      "mode": "fused",
+      "gebd_weight": 0.6,
+      "delta": 3,
+      "sigma": 1.0,
+      "prominence": 0.5,
+      "min_distance_s": 0.5
+    },
+    "motion": {
+      "signal": "r",
+      "mode": "peak",
+      "sigma": 2,
+      "prominence": 1.0,
+      "min_distance_s": 0.5
+    },
+    "sam3": {
+      "dilate_px": 5,
+      "min_obj_score": 0.5,
+      "min_overlap_frac": 0.01,
+      "min_hold_frames": 3,
+      "min_track_len": 3,
+      "use_switch": 1
+    }
+  },
+  "fusion": {
+    "weights": {
+      "abd": 1.0,
+      "motion": 1.0,
+      "sam3": 1.0
+    },
+    "nms_window_s": 0.5,
+    "min_fused_score": 0.0
+  },
+  "sam3_fps": 4.0
+}
