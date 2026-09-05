@@ -1,0 +1,13 @@
+{
+    "actions": [
+        "pick_up",
+        "move",
+        "put_down"
+    ],
+    "objects": [
+        "cup",
+        "glass"
+    ],
+    "min_duration_ms": 1000,
+    "min_confidence": 0.7
+}
