@@ -1,4 +1,6 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useEffect } from "react";
+import { downloadExport, getAnnotation, getJob, putAnnotation, uploadVideo, videoFileUrl } from "./api";
+import type { ActionSegment } from "./api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -7,19 +9,25 @@ interface Action {
   start_ms: number;
   end_ms: number;
   action: string;
-  object: string;
+  object: string | null;
   keyframe_ms: number;
   confidence: number;
   model_version: string;
+  clip_id?: string | null;
 }
 
 interface VideoRecord {
   id: string;
+  jobId?: string;
   name: string;
   duration_ms: number;
   status: "staged" | "pending" | "processing" | "done" | "error";
   uploadedAt: string;
   actions: Action[];
+  file?: File;
+  previewUrl?: string;
+  error?: string;
+  progress?: number;
 }
 
 // ─── Mock data ────────────────────────────────────────────────────────────────
@@ -34,21 +42,37 @@ const ACTION_COLORS: Record<string, string> = {
   default: "#6b7291",
 };
 
-const MOCK_ACTIONS: Action[] = [
-  { id: "a1", start_ms: 1200, end_ms: 3800, action: "pick_up", object: "cup", keyframe_ms: 2500, confidence: 0.94, model_version: "pipeline-0.1" },
-  { id: "a2", start_ms: 4500, end_ms: 7200, action: "pour", object: "liquid", keyframe_ms: 5800, confidence: 0.87, model_version: "pipeline-0.1" },
-  { id: "a3", start_ms: 8100, end_ms: 10400, action: "put_down", object: "cup", keyframe_ms: 9200, confidence: 0.91, model_version: "pipeline-0.1" },
-  { id: "a4", start_ms: 11000, end_ms: 13500, action: "open", object: "drawer", keyframe_ms: 12100, confidence: 0.78, model_version: "pipeline-0.1" },
-  { id: "a5", start_ms: 14200, end_ms: 16800, action: "close", object: "drawer", keyframe_ms: 15500, confidence: 0.83, model_version: "pipeline-0.1" },
-];
+function readVideoDurationMs(file: File): Promise<number> {
+  return new Promise((resolve) => {
+    const url = URL.createObjectURL(file);
+    const video = document.createElement("video");
+    video.preload = "metadata";
+    video.onloadedmetadata = () => {
+      const ms = Math.round((video.duration || 0) * 1000);
+      URL.revokeObjectURL(url);
+      resolve(ms > 0 ? ms : 15000);
+    };
+    video.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(15000);
+    };
+    video.src = url;
+  });
+}
 
-const MOCK_VIDEOS: VideoRecord[] = [
-  { id: "v1", name: "kitchen_trial_01.mp4", duration_ms: 20000, status: "done", uploadedAt: "2026-09-03 09:14", actions: MOCK_ACTIONS },
-  { id: "v2", name: "workspace_recording_03.mp4", duration_ms: 45000, status: "processing", uploadedAt: "2026-09-03 10:02", actions: [] },
-  { id: "v3", name: "assembly_line_v2.mp4", duration_ms: 60000, status: "pending", uploadedAt: "2026-09-03 10:45", actions: [] },
-  { id: "v5", name: "test_clip_staged.mp4", duration_ms: 15000, status: "staged", uploadedAt: "2026-09-03 11:45", actions: [] },
-  { id: "v4", name: "lab_session_07.mp4", duration_ms: 30000, status: "error", uploadedAt: "2026-09-03 11:20", actions: [] },
-];
+function toUiAction(seg: ActionSegment): Action {
+  return {
+    id: String(seg.id),
+    start_ms: seg.start_ms,
+    end_ms: seg.end_ms,
+    action: seg.action,
+    object: seg.object,
+    keyframe_ms: seg.keyframe_ms,
+    confidence: seg.confidence,
+    model_version: seg.model_version,
+    clip_id: seg.clip_id,
+  };
+}
 
 // ─── Utils ────────────────────────────────────────────────────────────────────
 
@@ -274,11 +298,11 @@ function LeftPanel({
   selectedVideoId: string | null;
   onSelectVideo: (id: string) => void;
   onAddVideo: (v: VideoRecord, select?: boolean) => void;
-  onSubmitPending: () => void;
+  onSubmitPending: (payload: { rulesJson: string; model: string }) => void;
   onDeleteVideo: (id: string) => void;
   onClearStaged: () => void;
 }) {
-  const [rulesJson, setRulesJson] = useState('{\n  "min_duration_ms": 500,\n  "min_confidence": 0.7,\n  "actions": ["pick_up", "put_down", "pour", "open", "close"]\n}');
+  const [rulesJson, setRulesJson] = useState('{\n  "min_duration_ms": 500,\n  "min_confidence": 0.7,\n  "actions": ["pick_up", "put_down", "pour", "open", "close"],\n  "objects": ["cup", "glass", "bottle", "drawer"]\n}');
   const [rulesFileName, setRulesFileName] = useState<string | null>(null);
   const [fps, setFps] = useState("30");
   const [model, setModel] = useState("pipeline-0.1");
@@ -287,23 +311,35 @@ function LeftPanel({
   const rulesFileRef = useRef<HTMLInputElement>(null);
 
   const hasStagedVideos = videos.some((v) => v.status === "staged");
-  const canSubmit = hasStagedVideos && rulesFileName !== null;
+  const rulesValid = (() => {
+    try {
+      JSON.parse(rulesJson);
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+  const canSubmit = hasStagedVideos && rulesValid;
 
-  function handleVideoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleVideoFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
     if (!files.length) return;
     const now = Date.now();
-    files.forEach((file, i) => {
+    for (const [i, file] of files.entries()) {
+      const duration_ms = await readVideoDurationMs(file);
+      const previewUrl = URL.createObjectURL(file);
       const newVideo: VideoRecord = {
-        id: "v" + (now + i),
+        id: "local-" + (now + i),
         name: file.name,
-        duration_ms: Math.floor(Math.random() * 60000 + 10000),
+        duration_ms,
         status: "staged",
         uploadedAt: new Date().toISOString().slice(0, 16).replace("T", " "),
         actions: [],
+        file,
+        previewUrl,
       };
       onAddVideo(newVideo, i === 0);
-    });
+    }
     e.target.value = "";
   }
 
@@ -422,7 +458,7 @@ function LeftPanel({
             <button
               disabled={!canSubmit}
               onClick={() => {
-                onSubmitPending();
+                onSubmitPending({ rulesJson, model });
               }}
               className={`w-full h-9 rounded text-xs font-semibold transition-colors ${
                 canSubmit
@@ -430,12 +466,10 @@ function LeftPanel({
                   : "bg-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed"
               }`}
             >
-              {!hasStagedVideos && !rulesFileName
-                ? "Upload video & rules to submit"
-                : !hasStagedVideos
+              {!hasStagedVideos
                 ? "Upload a video to submit"
-                : !rulesFileName
-                ? "Upload rules to submit"
+                : !rulesValid
+                ? "Fix rules JSON to submit"
                 : "Submit to Annotation Queue"}
             </button>
           </div>
@@ -477,7 +511,9 @@ function LeftPanel({
                   </div>
                   <div className="flex items-center justify-between pl-3.5">
                     <span className="text-[10px] font-mono text-[var(--color-text-muted)]">{v.uploadedAt}</span>
-                    <span className="text-[10px] font-mono text-[var(--color-text-dim)]">{msToTimecode(v.duration_ms)}</span>
+                    <span className="text-[10px] font-mono text-[var(--color-text-dim)]">
+                      {v.status === "processing" && v.progress != null ? `${v.progress}%` : msToTimecode(v.duration_ms)}
+                    </span>
                   </div>
                 </div>
               );
@@ -570,6 +606,7 @@ function CenterPanel({
   pendingEdits,
   onSetPendingEdits,
   onTimeChange,
+  onDurationMs,
 }: {
   video: VideoRecord | null;
   selectedActionId: string | null;
@@ -580,12 +617,14 @@ function CenterPanel({
   pendingEdits: Record<string, Action>;
   onSetPendingEdits: React.Dispatch<React.SetStateAction<Record<string, Action>>>;
   onTimeChange?: (ms: number) => void;
+  onDurationMs?: (ms: number) => void;
 }) {
   const [currentMs, setCurrentMs] = useState(0);
   const [activeTool, setActiveTool] = useState<Tool>("select");
   const [zoom, setZoom] = useState(1);
   const timelineRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const isDragging = useRef(false);
 
   // Confirm dialog state
@@ -669,11 +708,22 @@ function CenterPanel({
 
   const duration = video?.duration_ms ?? 20000;
   const actions = video?.actions ?? [];
+  const mediaUrl = video?.previewUrl || (video && video.status !== "staged" ? videoFileUrl(video.id) : "");
 
   function seekTo(ms: number) {
     const clamped = Math.max(0, Math.min(ms, duration));
     setCurrentMs(clamped);
+    if (videoRef.current) {
+      videoRef.current.currentTime = clamped / 1000;
+    }
     onTimeChange?.(clamped);
+  }
+
+  function togglePlayback() {
+    const el = videoRef.current;
+    if (!el) return;
+    if (el.paused) el.play().catch(() => undefined);
+    else el.pause();
   }
 
   function handleTimelineClick(e: React.MouseEvent<HTMLDivElement>) {
@@ -760,13 +810,30 @@ function CenterPanel({
                   height: "auto",
                 }}
               >
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent)] flex items-center justify-center mb-3">
-                    <PlayIcon />
-                  </div>
-                  <p className="text-xs text-[var(--color-text-muted)] font-mono">{video.name}</p>
-                </div>
-                <div className="absolute bottom-3 left-3 flex items-center gap-3">
+                {mediaUrl ? (
+                  <video
+                    ref={videoRef}
+                    src={mediaUrl}
+                    className="absolute inset-0 w-full h-full object-contain bg-black"
+                    onTimeUpdate={(e) => setCurrentMs(Math.round(e.currentTarget.currentTime * 1000))}
+                    onLoadedMetadata={(e) => {
+                      const ms = Math.round((e.currentTarget.duration || 0) * 1000);
+                      if (ms > 0) onDurationMs?.(ms);
+                    }}
+                    onClick={togglePlayback}
+                  />
+                ) : (
+                  <button
+                    type="button"
+                    className="absolute inset-0 flex flex-col items-center justify-center"
+                  >
+                    <div className="w-16 h-16 rounded-full border-2 border-[var(--color-accent)] flex items-center justify-center mb-3">
+                      <PlayIcon />
+                    </div>
+                    <p className="text-xs text-[var(--color-text-muted)] font-mono">{video.name}</p>
+                  </button>
+                )}
+                <div className="absolute bottom-3 left-3 flex items-center gap-3 pointer-events-none">
                   <span className="font-mono text-xs text-[var(--color-accent)] bg-black/70 px-2 py-0.5 rounded">
                     {msToTimecode(currentMs)}
                   </span>
@@ -1116,7 +1183,7 @@ const ActionEditor = ({
 
       <div className="grid grid-cols-2 gap-2">
         <FieldInput label="Action" value={local.action} onChange={(v) => update({ action: v })} />
-        <FieldInput label="Object" value={local.object} onChange={(v) => update({ object: v })} />
+        <FieldInput label="Object" value={local.object ?? ""} onChange={(v) => update({ object: v.trim() ? v : null })} />
       </div>
       <div className="grid grid-cols-2 gap-2">
         <FieldInput label="Start (ms)" value={String(local.start_ms)} type="number" onChange={(v) => update({ start_ms: Number(v) })} />
@@ -1302,6 +1369,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     appName: "ActionLabel",
     annotate: "Annotate",
     export: "Export JSON",
+    exportCsv: "CSV",
     actions: "actions",
     noVideo: "No video selected",
     exportFile: "annotations.json",
@@ -1310,6 +1378,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     appName: "动作标注",
     annotate: "标注",
     export: "导出 JSON",
+    exportCsv: "CSV",
     actions: "个动作",
     noVideo: "未选择视频",
     exportFile: "标注结果.json",
@@ -1318,6 +1387,7 @@ const I18N: Record<Lang, Record<string, string>> = {
     appName: "ActionLabel",
     annotate: "Разметка",
     export: "Экспорт JSON",
+    exportCsv: "CSV",
     actions: "действий",
     noVideo: "Видео не выбрано",
     exportFile: "аннотации.json",
@@ -1327,8 +1397,8 @@ const I18N: Record<Lang, Record<string, string>> = {
 // ─── App root ─────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const [videos, setVideos] = useState<VideoRecord[]>(MOCK_VIDEOS);
-  const [selectedVideoId, setSelectedVideoId] = useState<string>("v1");
+  const [videos, setVideos] = useState<VideoRecord[]>([]);
+  const [selectedVideoId, setSelectedVideoId] = useState<string | null>(null);
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const [dark, setDark] = useState(true);
   const [lang, setLang] = useState<Lang>("en");
@@ -1338,54 +1408,165 @@ export default function App() {
   const selectedVideo = videos.find((v) => v.id === selectedVideoId) ?? null;
   const actions = selectedVideo?.actions ?? [];
 
-  // Apply light/dark via CSS class on root element
   useEffect(() => {
     document.documentElement.classList.toggle("light-theme", !dark);
   }, [dark]);
 
+  const videosRef = useRef(videos);
+  videosRef.current = videos;
+  const pollingKey = videos
+    .filter((v) => v.jobId && (v.status === "processing" || v.status === "pending"))
+    .map((v) => v.jobId)
+    .sort()
+    .join(",");
+
+  useEffect(() => {
+    if (!pollingKey) return;
+    let cancelled = false;
+    const jobIds = pollingKey.split(",");
+    async function poll() {
+      for (const jobId of jobIds) {
+        const video = videosRef.current.find((row) => row.jobId === jobId);
+        if (!video) continue;
+        try {
+          const job = await getJob(jobId);
+          if (cancelled) return;
+          const mapped: VideoRecord["status"] =
+            job.status === "completed" ? "done" : job.status === "error" ? "error" : "processing";
+          let nextActions = video.actions;
+          let duration = video.duration_ms;
+          if (job.status === "completed") {
+            const annotation = await getAnnotation(job.video_id);
+            nextActions = annotation.segments.map(toUiAction);
+            duration = annotation.duration_ms || duration;
+          }
+          setVideos((vs) =>
+            vs.map((row) =>
+              row.jobId === jobId
+                ? {
+                    ...row,
+                    id: job.video_id,
+                    status: mapped,
+                    progress: job.progress,
+                    error: job.error || undefined,
+                    actions: mapped === "done" ? nextActions : row.actions,
+                    duration_ms: duration,
+                  }
+                : row
+            )
+          );
+          setSelectedVideoId((current) => (current === video.id ? job.video_id : current));
+        } catch (err) {
+          if (cancelled) return;
+          setVideos((vs) =>
+            vs.map((row) =>
+              row.jobId === jobId
+                ? { ...row, status: "error", error: err instanceof Error ? err.message : String(err) }
+                : row
+            )
+          );
+        }
+      }
+    }
+    poll();
+    const timer = window.setInterval(poll, 1500);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [pollingKey]);
+
   function updateActions(id: string, updated: Action[]) {
-    setVideos((vs) => vs.map((v) => v.id === id ? { ...v, actions: updated } : v));
+    setVideos((vs) => vs.map((v) => (v.id === id ? { ...v, actions: updated } : v)));
+  }
+
+  async function persistActions(video: VideoRecord, next: Action[]) {
+    if (!video.jobId || video.status === "staged" || video.status === "processing") return;
+    try {
+      await putAnnotation(video.id, next);
+    } catch {
+      // keep local edits even if the backend is briefly unavailable
+    }
   }
 
   function handleUpdateAction(updated: Action) {
-    if (!selectedVideoId) return;
-    updateActions(selectedVideoId, actions.map((a) => a.id === updated.id ? updated : a));
+    if (!selectedVideoId || !selectedVideo) return;
+    const next = actions.map((a) => (a.id === updated.id ? updated : a));
+    updateActions(selectedVideoId, next);
+    void persistActions(selectedVideo, next);
   }
 
   function handleAddAction(atMs?: number) {
-    if (!selectedVideoId) return;
+    if (!selectedVideoId || !selectedVideo) return;
     const start = atMs ?? (actions[actions.length - 1]?.end_ms ?? 0) + 500;
     const newAction: Action = {
       id: "a" + Date.now(),
       start_ms: start,
       end_ms: start + 2000,
       action: "unknown",
-      object: "unknown",
+      object: null,
       keyframe_ms: start + 1000,
       confidence: 1.0,
       model_version: "manual",
     };
-    updateActions(selectedVideoId, [...actions, newAction]);
+    const next = [...actions, newAction];
+    updateActions(selectedVideoId, next);
     setSelectedActionId(newAction.id);
+    void persistActions(selectedVideo, next);
   }
 
   function handleDeleteAction(id: string) {
-    if (!selectedVideoId) return;
-    updateActions(selectedVideoId, actions.filter((a) => a.id !== id));
+    if (!selectedVideoId || !selectedVideo) return;
+    const next = actions.filter((a) => a.id !== id);
+    updateActions(selectedVideoId, next);
     if (selectedActionId === id) setSelectedActionId(null);
+    void persistActions(selectedVideo, next);
   }
 
   function handleAddVideo(v: VideoRecord, select = true) {
     setVideos((vs) => [v, ...vs]);
-    if (select) { setSelectedVideoId(v.id); setSelectedActionId(null); }
+    if (select) {
+      setSelectedVideoId(v.id);
+      setSelectedActionId(null);
+    }
   }
 
-  function handleSubmitPending() {
-    setVideos((vs) => vs.map((v) => v.status === "staged" ? { ...v, status: "pending" } : v));
+  async function handleSubmitPending(payload: { rulesJson: string; model: string }) {
+    const staged = videos.filter((v) => v.status === "staged" && v.file);
+    for (const video of staged) {
+      try {
+        setVideos((vs) => vs.map((row) => (row.id === video.id ? { ...row, status: "processing", progress: 5 } : row)));
+        const uploaded = await uploadVideo(video.file as File, payload.rulesJson, payload.model);
+        setVideos((vs) =>
+          vs.map((row) =>
+            row.id === video.id
+              ? {
+                  ...row,
+                  id: uploaded.video_id,
+                  jobId: uploaded.job_id,
+                  status: "processing",
+                  progress: 10,
+                }
+              : row
+          )
+        );
+        setSelectedVideoId((current) => (current === video.id ? uploaded.video_id : current));
+      } catch (err) {
+        setVideos((vs) =>
+          vs.map((row) =>
+            row.id === video.id
+              ? { ...row, status: "error", error: err instanceof Error ? err.message : String(err) }
+              : row
+          )
+        );
+      }
+    }
   }
 
   function handleClearStaged() {
-    const stagedIds = new Set(videos.filter((v) => v.status === "staged").map((v) => v.id));
+    const staged = videos.filter((v) => v.status === "staged");
+    const stagedIds = new Set(staged.map((v) => v.id));
+    staged.forEach((v) => v.previewUrl && URL.revokeObjectURL(v.previewUrl));
     setVideos((vs) => vs.filter((v) => !stagedIds.has(v.id)));
     if (selectedVideoId && stagedIds.has(selectedVideoId)) {
       const remaining = videos.filter((v) => !stagedIds.has(v.id));
@@ -1395,6 +1576,8 @@ export default function App() {
   }
 
   function handleDeleteVideo(id: string) {
+    const victim = videos.find((v) => v.id === id);
+    if (victim?.previewUrl) URL.revokeObjectURL(victim.previewUrl);
     setVideos((vs) => vs.filter((v) => v.id !== id));
     if (selectedVideoId === id) {
       const remaining = videos.filter((v) => v.id !== id);
@@ -1403,11 +1586,32 @@ export default function App() {
     }
   }
 
-  function handleExport() {
+  async function handleExport(format: "json" | "csv") {
+    if (selectedVideo && selectedVideo.status !== "staged" && selectedVideo.jobId) {
+      await persistActions(selectedVideo, actions);
+      await downloadExport(selectedVideo.id, format);
+      return;
+    }
+    if (format === "csv") {
+      const header = "id,start_ms,end_ms,action,object,keyframe_ms,confidence,model_version";
+      const lines = actions.map((a) =>
+        [a.id, a.start_ms, a.end_ms, a.action, a.object ?? "", a.keyframe_ms, a.confidence, a.model_version].join(",")
+      );
+      const blob = new Blob([[header, ...lines].join("\n")], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "actions.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+      return;
+    }
     const blob = new Blob([JSON.stringify(actions, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = t.exportFile; a.click();
+    a.href = url;
+    a.download = t.exportFile;
+    a.click();
     URL.revokeObjectURL(url);
   }
 
@@ -1494,7 +1698,7 @@ export default function App() {
 
           {/* Export */}
           <button
-            onClick={handleExport}
+            onClick={() => void handleExport("json")}
             disabled={actions.length === 0}
             className={`h-7 px-3 rounded text-[11px] font-semibold transition-colors flex items-center gap-1.5 ${
               actions.length > 0
@@ -1504,6 +1708,17 @@ export default function App() {
           >
             <ExportIcon />
             {t.export}
+          </button>
+          <button
+            onClick={() => void handleExport("csv")}
+            disabled={actions.length === 0}
+            className={`h-7 px-3 rounded text-[11px] font-semibold transition-colors ${
+              actions.length > 0
+                ? "border border-[var(--color-accent)] text-[var(--color-accent)] hover:bg-[var(--color-accent-glow)]"
+                : "border border-[var(--color-border)] text-[var(--color-text-muted)] cursor-not-allowed opacity-50"
+            }`}
+          >
+            {t.exportCsv}
           </button>
         </div>
       </header>
@@ -1529,6 +1744,10 @@ export default function App() {
           onDeleteAction={handleDeleteAction}
           pendingEdits={pendingEdits}
           onSetPendingEdits={setPendingEdits}
+          onDurationMs={(ms) => {
+            if (!selectedVideoId) return;
+            setVideos((vs) => vs.map((v) => (v.id === selectedVideoId && v.duration_ms !== ms ? { ...v, duration_ms: ms } : v)));
+          }}
         />
 
         <RightPanel

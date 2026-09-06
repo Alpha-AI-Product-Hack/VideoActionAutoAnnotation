@@ -15,7 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 torch = [
   "torch>=2.2",
-  "transformers>=4.40",
+  "transformers>=4.40,<5",
 ]
 video = [
   "torchvision>=0.17",
@@ -23,6 +23,26 @@ video = [
 ]
 hf = [
   "huggingface_hub>=0.23",
+]
+internvideo2 = [
+  "torch>=2.2",
+  "transformers>=4.40,<5",
+  "huggingface_hub>=0.23",
+  "timm>=0.9",
+  "einops>=0.7",
+  "opencv-python-headless>=4.9",
+]
+api = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.32",
+  "python-multipart>=0.0.12",
+  "pydantic>=2.7",
+  "httpx>=0.27",
+  "opencv-python-headless>=4.9",
+  "scipy>=1.11",
+]
+test = [
+  "pytest>=8.0",
 ]
 
 [project.scripts]
@@ -33,3 +53,8 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["action_ranker*", "pipeline*"]
+
+[tool.pytest.ini_options]
+pythonpath = [".", "src"]
+testpaths = ["tests"]

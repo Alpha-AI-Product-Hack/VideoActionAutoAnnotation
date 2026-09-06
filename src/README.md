@@ -64,11 +64,33 @@ and 10 clips, X-CLIP B/32 gives Top-1 0.0000, Top-3 0.2000, Top-5 0.2000,
 Top-20 0.4000, Top-50 0.6000. This is not good enough as a final action chooser,
 but it is useful as a fast shortlist generator.
 
+For verb classification, use verb-only class banks. The comparable 20-clip
+Assembly101 dissimilar-verb run uses `clips_verb.json` and `verb_bank.csv`, not
+the full `verb-object` action bank.
+
+InternVideo2 Stage2 1B was added as an optional frozen encoder. On the same
+RTX 5070 Laptop GPU, `internvideo2-1b` loads and runs in CUDA float16 with
+4-frame input. The verb-only run is
+`artifacts/runs/a101-20-dissimilar-internvideo2-1b-verb8`: Top-1 0.0500,
+Top-3 0.2000, Top-5 0.6500, macro-F1 0.0313, mean inference 1.0469 s/clip.
+The larger `internvideo2-6b` HF package was checked but not run: HF reports
+6.37B F32 parameters, so fp16 weights alone are about 12.7 GB and exceed the
+local 8.15 GB VRAM budget before activations.
+
+The current strict verb-only RGB benchmark is
+`artifacts/runs/assembly101-rgb-fine-balanced-verb10-200`: exactly 200
+`gold_action` clip rows, balanced as 10 verbs x 20 clips, sampled from 17
+`*_rgb.mp4` files. HMC videos are excluded, and the class bank contains only
+verb labels: `pick up`, `put down`, `inspect`, `unscrew`, `rotate`, `position`,
+`screw`, `remove`, `push`, and `pull`.
+
 ## Experiment Summary
 
 | experiment | model | n | labels | Top-1 | Top-3 | Top-5 | Top-20 | Top-50 | macro-F1 | conclusion |
 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
 | A101 dissimilar full actions | X-CLIP B/32 | 20 | 20 | 0.2000 | 0.3000 | 0.4000 | 1.0000 | 1.0000 | 0.1410 | best full-action run |
+| A101 dissimilar verbs | X-CLIP B/32 | 20 | 8 | 0.1500 | 0.4500 | 0.7500 | 1.0000 | 1.0000 | 0.0977 | verb-only bank |
+| A101 dissimilar verbs | InternVideo2 Stage2 1B | 20 | 8 | 0.0500 | 0.2000 | 0.6500 | 1.0000 | 1.0000 | 0.0313 | runs on GPU, lower Top-1/3 than X-CLIP |
 | A101 full coarse bank | X-CLIP B/32 | 10 | 202 | 0.0000 | 0.2000 | 0.2000 | 0.4000 | 0.6000 | 0.0000 | useful Top-50 shortlist |
 | A101 full coarse bank | X-CLIP B/32 T=32 | 10 | 202 | 0.0000 | 0.2000 | 0.2000 | 0.5000 | 0.5000 | 0.0000 | no clear gain |
 | A101 full coarse bank | X-CLIP B/16 zero-shot | 10 | 202 | 0.0000 | 0.2000 | 0.2000 | 0.4000 | 0.5000 | 0.0000 | no clear gain |
@@ -77,9 +99,21 @@ but it is useful as a fast shortlist generator.
 | A101 fine official verbs | Qwen3-VL 2B | 20 | 10 | 0.1000 | 0.3000 | 0.5000 | 1.0000 | 1.0000 | 0.0182 | slower, small Top-1 gain |
 | A101 coarse official verbs | X-CLIP B/32 | 20 | 10 | 0.1000 | 0.3000 | 0.5500 | 1.0000 | 1.0000 | 0.0200 | local, fast baseline |
 | A101 coarse official verbs | Qwen3-VL 2B | 20 | 10 | 0.1500 | 0.3000 | 0.4000 | 1.0000 | 1.0000 | 0.0737 | higher small-n Top-1, lower Top-5 |
-| A101 fine diverse verbs | X-CLIP B/32 | 200 | 10 | 0.1150 | 0.3100 | 0.5050 | 1.0000 | 1.0000 | 0.0610 | near random, GPU verified |
-| A101 fine diverse verbs | Qwen3-VL 2B | 200 | 10 | 0.1100 | 0.2850 | 0.4900 | 1.0000 | 1.0000 | 0.0450 | not better than X-CLIP |
+| A101 RGB fine balanced verbs | X-CLIP B/32 | 200 | 10 | 0.1100 | 0.3200 | 0.5800 | 1.0000 | 1.0000 | 0.0365 | strict verb-only, 17 RGB videos, no HMC |
+| A101 RGB fine balanced verbs | InternVideo2 Stage2 1B | 200 | 10 | 0.1550 | 0.3150 | 0.4850 | 1.0000 | 1.0000 | 0.0712 | strict verb-only, fits 8 GB GPU in fp16 |
+| A101 legacy fine official `verb_cls` | X-CLIP B/32 | 200 | 10 | 0.1150 | 0.3100 | 0.5050 | 1.0000 | 1.0000 | 0.0610 | official fine verb_cls phrases, not strict verb-only |
+| A101 coarse diverse verbs | X-CLIP B/32 | 200 | 6 | 0.1500 | 0.4100 | 0.9250 | 1.0000 | 1.0000 | 0.1044 | verb-only bank, GPU verified |
+| A101 legacy fine official `verb_cls` | Qwen3-VL 2B | 200 | 10 | 0.1100 | 0.2850 | 0.4900 | 1.0000 | 1.0000 | 0.0450 | same non-strict fine `verb_cls` phrase bank |
 | EPIC local full bank | X-CLIP B/32 | 10 | 3806 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.1000 | 0.0000 | only 10 local clips available |
+
+The X-CLIP fine/coarse official inspection runs were checked against their
+`verb_bank.csv` files: `gold_action`, `pred_action`, and every `topk_labels`
+entry are verb labels only. The current RGB balanced 200-clip X-CLIP and
+InternVideo2 runs were checked the same way: all 200 predictions use only the 10
+verb labels above. The coarse diverse 200 run is also strict verb-only. The
+older fine diverse 200 run uses official fine `verb_cls` labels; it contains
+labels such as `position screw on` and `remove screw from`, so it should not be
+treated as a strict verb-only comparison.
 
 Gemini was implemented as a constrained VLM runner, but the sandbox blocked the
 network call and the run has zero predictions. Qwen3-VL 8B with Unsloth 4-bit was
@@ -93,8 +127,28 @@ python -m venv .venv
 pip install -e '.[torch,video,hf]'
 ```
 
+With `uv`, install all local model extras including InternVideo2:
+
+```bash
+uv sync --extra torch --extra video --extra hf --extra internvideo2
+```
+
 If CUDA PyTorch is not already installed, install the correct PyTorch wheel for
 the target machine first, then run the editable install above.
+
+InternVideo2 1B uses the gated official Hugging Face checkpoint
+`OpenGVLab/InternVideo2-Stage2_1B-224p-f4`; accept access on the model page and
+log in with `huggingface-cli login`/`hf auth login` before the first run. The 1B
+HF repository contains only the checkpoint, so the loader reuses OpenGVLab's
+Stage2 custom-code package and records the loaded checkpoint in `run_meta.json`.
+Check the local GPU fit before a long run:
+
+```bash
+.venv/bin/python -m action_ranker.run internvideo2-preflight \
+  --model internvideo2-1b \
+  --device cuda \
+  --dtype float16
+```
 
 ## Input From Segmentation
 
@@ -152,6 +206,21 @@ put down cup,4,20
   --bank-file path/to/action_bank.csv \
   --dataset custom \
   --run-id my-xclip-run
+```
+
+InternVideo2 1B uses the same output contract:
+
+```bash
+.venv/bin/python -m action_ranker.run clips \
+  --encoder internvideo2-1b \
+  --clips-json artifacts/runs/a101-20-dissimilar/clips_verb.json \
+  --media-root data/raw/assembly101 \
+  --bank a101_dissimilar_verb8 \
+  --bank-file artifacts/runs/a101-20-dissimilar/verb_bank.csv \
+  --dataset assembly101 \
+  --run-id repro-a101-20-dissimilar-internvideo2-1b-verb8 \
+  --device cuda \
+  --dtype float16
 ```
 
 Outputs are written to:

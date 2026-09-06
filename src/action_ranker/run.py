@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import json
+import time
 import uuid
+from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -43,8 +46,22 @@ XCLIP_MODEL_IDS = {
     "xclip-zs": "microsoft/xclip-base-patch16-zero-shot",
 }
 
+INTERNVIDEO2_MODEL_IDS = {
+    "internvideo2-1b": "OpenGVLab/InternVideo2-Stage2_1B-224p-f4",
+    "internvideo2-6b": "OpenGVLab/InternVideo2-Stage2_6B",
+}
 
-def get_encoder(name: str, num_frames: int | None = None):
+ENCODER_CHOICES = ["stub", *XCLIP_MODEL_IDS.keys(), *INTERNVIDEO2_MODEL_IDS.keys()]
+
+
+def get_encoder(
+    name: str,
+    num_frames: int | None = None,
+    device: str | None = None,
+    dtype: str = "auto",
+    internvideo2_checkpoint_path: str | None = None,
+    internvideo2_checkpoint_repo: str | None = None,
+):
     if name == "stub":
         return StubEncoder()
     if name in XCLIP_MODEL_IDS:
@@ -53,7 +70,20 @@ def get_encoder(name: str, num_frames: int | None = None):
         kwargs: dict = {"model_id": XCLIP_MODEL_IDS[name]}
         if num_frames is not None:
             kwargs["num_frames"] = num_frames
+        if device not in {None, "auto"}:
+            kwargs["device"] = device
         return XClipEncoder(**kwargs)
+    if name in INTERNVIDEO2_MODEL_IDS:
+        from action_ranker.internvideo2_encoder import InternVideo2Encoder
+
+        return InternVideo2Encoder(
+            model_id=INTERNVIDEO2_MODEL_IDS[name],
+            num_frames=num_frames,
+            device=device,
+            dtype=dtype,
+            checkpoint_path=internvideo2_checkpoint_path,
+            checkpoint_repo=internvideo2_checkpoint_repo,
+        )
     raise ValueError(f"Unknown encoder {name!r}")
 
 
@@ -136,7 +166,14 @@ def run_one_clip(args: argparse.Namespace) -> int:
     clip_duration_s = float(args.end) - float(args.start)
 
     def _warmup():
-        encoder = get_encoder(args.encoder, num_frames=getattr(args, "num_frames", None))
+        encoder = get_encoder(
+            args.encoder,
+            num_frames=getattr(args, "num_frames", None),
+            device=getattr(args, "device", None),
+            dtype=getattr(args, "dtype", "auto"),
+            internvideo2_checkpoint_path=getattr(args, "internvideo2_checkpoint_path", None),
+            internvideo2_checkpoint_repo=getattr(args, "internvideo2_checkpoint_repo", None),
+        )
         rows = load_dictionary_rows(args.bank)
         labels = [row.label for row in rows]
         identity_keys = [row.identity_key(args.bank) for row in rows]
@@ -226,7 +263,14 @@ def _warmup_text_banks(encoder, dictionary_ids: list[str]) -> dict[str, tuple[li
 
 def run_slice(args: argparse.Namespace) -> int:
     encoder, warmup_load_s = elapsed(
-        lambda: get_encoder(args.encoder, num_frames=getattr(args, "num_frames", None))
+        lambda: get_encoder(
+            args.encoder,
+            num_frames=getattr(args, "num_frames", None),
+            device=getattr(args, "device", None),
+            dtype=getattr(args, "dtype", "auto"),
+            internvideo2_checkpoint_path=getattr(args, "internvideo2_checkpoint_path", None),
+            internvideo2_checkpoint_repo=getattr(args, "internvideo2_checkpoint_repo", None),
+        )
     )
     out_dir = _run_dir(args.run_id)
     skips: list[SkipEvent] = []
@@ -390,7 +434,14 @@ def run_clips(args: argparse.Namespace) -> int:
         raise SystemExit(f"No clips found in {args.clips_json}")
 
     encoder, warmup_load_s = elapsed(
-        lambda: get_encoder(args.encoder, num_frames=getattr(args, "num_frames", None))
+        lambda: get_encoder(
+            args.encoder,
+            num_frames=getattr(args, "num_frames", None),
+            device=getattr(args, "device", None),
+            dtype=getattr(args, "dtype", "auto"),
+            internvideo2_checkpoint_path=getattr(args, "internvideo2_checkpoint_path", None),
+            internvideo2_checkpoint_repo=getattr(args, "internvideo2_checkpoint_repo", None),
+        )
     )
     rows = _load_bank_rows(dictionary_id, bank_file=getattr(args, "bank_file", None))
     labels = [row.label for row in rows]
@@ -540,6 +591,7 @@ def run_clips(args: argparse.Namespace) -> int:
         "weight_updates": False,
         "n_skip_events": len(skips),
         "warmup_s": warmup_s,
+        **_encoder_runtime_meta(args),
     }
     if getattr(args, "bank_file", None):
         meta_extra["custom_taxonomy_files"] = {dictionary_id: str(Path(args.bank_file))}
@@ -552,6 +604,311 @@ def run_clips(args: argparse.Namespace) -> int:
     )
     print(out_dir)
     return 0
+
+
+def run_grouped_clips(args: argparse.Namespace) -> int:
+    dictionary_id = args.bank
+    clips_payload = json.loads(Path(args.clips_json).read_text(encoding="utf-8"))
+    clip_rows = clips_payload.get("clips")
+    if not isinstance(clip_rows, list) or not clip_rows:
+        raise SystemExit(f"No clips found in {args.clips_json}")
+
+    encoder, warmup_load_s = elapsed(
+        lambda: get_encoder(
+            args.encoder,
+            num_frames=getattr(args, "num_frames", None),
+            device=getattr(args, "device", None),
+            dtype=getattr(args, "dtype", "auto"),
+            internvideo2_checkpoint_path=getattr(args, "internvideo2_checkpoint_path", None),
+            internvideo2_checkpoint_repo=getattr(args, "internvideo2_checkpoint_repo", None),
+        )
+    )
+    rows = _load_bank_rows(dictionary_id, bank_file=getattr(args, "bank_file", None))
+    labels = [row.label for row in rows]
+    identity_keys = [row.identity_key(dictionary_id) for row in rows]
+    text, warmup_cache_s = elapsed(
+        lambda: load_or_build_text_cache(
+            encoder.encoder_id,
+            dictionary_id,
+            PROMPT_ID,
+            labels,
+            lambda labs: encode_action_batch(labs, encoder, PROMPT_ID),
+        )
+    )
+    warmup_s = warmup_load_s + warmup_cache_s
+
+    out_dir = _run_dir(args.run_id)
+    records: list[PredictionRecord] = []
+    skips: list[SkipEvent] = []
+    grouped: dict[str, list[tuple[str, str, GoldInterval]]] = defaultdict(list)
+    for raw in clip_rows:
+        dataset = str(raw.get("dataset") or args.dataset)
+        interval = GoldInterval(
+            video_id=str(raw["video_id"]),
+            start_sec=float(raw["start_sec"]),
+            end_sec=float(raw["end_sec"]),
+            gold_action=str(raw.get("gold_action") or raw.get("prompt_action_label") or ""),
+            gold_verb_id=_optional_int(raw.get("gold_verb_id", raw.get("verb_id"))),
+            gold_noun_id=_optional_int(raw.get("gold_noun_id", raw.get("noun_id"))),
+        )
+        if not _valid_interval(interval):
+            skips.append(
+                SkipEvent(
+                    reason="invalid_interval",
+                    video_id=interval.video_id,
+                    start_sec=interval.start_sec,
+                    end_sec=interval.end_sec,
+                )
+            )
+            continue
+        media_path = _media_path_for_clip(raw, Path(args.media_root), interval.video_id)
+        if media_path is None:
+            skips.append(
+                SkipEvent(
+                    reason="missing_media",
+                    video_id=interval.video_id,
+                    start_sec=interval.start_sec,
+                    end_sec=interval.end_sec,
+                    extra={"media_root": str(args.media_root)},
+                )
+            )
+            continue
+        clip_id = str(raw.get("clip_id") or f"{interval.video_id}:{interval.start_sec}:{interval.end_sec}")
+        grouped[str(media_path)].append((clip_id, dataset, interval))
+
+    pred_path = out_dir / "predictions.jsonl"
+    rank_path = out_dir / "rankings.jsonl"
+    pred_handle = pred_path.open("w", encoding="utf-8")
+    rank_handle = rank_path.open("w", encoding="utf-8")
+    try:
+        for media_path, items in sorted(grouped.items()):
+            try:
+                frames_by_clip, decode_s = elapsed(
+                    lambda path=Path(media_path), group=items: _sample_video_group_once(
+                        path,
+                        [(clip_id, interval) for clip_id, _, interval in group],
+                        num_frames=encoder.num_frames,
+                    )
+                )
+            except ClipDecodeError as exc:
+                for _, _, interval in items:
+                    skips.append(
+                        SkipEvent(
+                            reason="unreadable_media_group",
+                            video_id=interval.video_id,
+                            start_sec=interval.start_sec,
+                            end_sec=interval.end_sec,
+                            extra={"media_path": media_path, "error": str(exc)},
+                        )
+                    )
+                continue
+            ready = [
+                (clip_id, dataset, interval, frames_by_clip.get(clip_id))
+                for clip_id, dataset, interval in items
+            ]
+            ready = [(clip_id, dataset, interval, frames) for clip_id, dataset, interval, frames in ready if frames is not None]
+            missing = {clip_id for clip_id, _, _ in items} - {clip_id for clip_id, _, _, _ in ready}
+            for clip_id, _, interval in items:
+                if clip_id in missing:
+                    skips.append(
+                        SkipEvent(
+                            reason="unreadable_clip",
+                            video_id=interval.video_id,
+                            start_sec=interval.start_sec,
+                            end_sec=interval.end_sec,
+                            extra={"media_path": media_path},
+                        )
+                    )
+            decode_per_clip_s = decode_s / max(1, len(ready))
+            for offset in range(0, len(ready), args.batch_size):
+                batch = ready[offset : offset + args.batch_size]
+                frame_batch = np.stack([frames for _, _, _, frames in batch], axis=0)
+                started = time.perf_counter()
+                rankings = _rank_frame_batch(
+                    encoder,
+                    frame_batch,
+                    text,
+                    labels,
+                    [clip_id for clip_id, _, _, _ in batch],
+                    identity_keys,
+                )
+                encode_s = time.perf_counter() - started
+                encode_per_clip_s = encode_s / max(1, len(batch))
+                for (clip_id, dataset, interval, _), ranking in zip(batch, rankings, strict=True):
+                    record = prediction_from_ranking(
+                        dataset=dataset,
+                        interval=interval,
+                        ranking=ranking,
+                        dictionary_id=dictionary_id,
+                        encoder=encoder,
+                        inference_s=decode_per_clip_s + encode_per_clip_s,
+                        decode_s=decode_per_clip_s,
+                        encode_s=encode_per_clip_s,
+                        rank_s=0.0,
+                    )
+                    records.append(record)
+                    pred_handle.write(json.dumps(record.to_dict()) + "\n")
+                    rank_handle.write(
+                        json.dumps(
+                            {
+                                "clip_id": ranking.clip_id,
+                                "dictionary_id": dictionary_id,
+                                "pred_action": ranking.pred_action,
+                                "labels": ranking.labels,
+                                "cosine_distance": ranking.cosine_distance,
+                                "cosine_similarity": ranking.cosine_similarity,
+                                "identity_keys": ranking.identity_keys,
+                                "inference_s": record.inference_s,
+                                "decode_s": record.decode_s,
+                                "encode_s": record.encode_s,
+                                "rank_s": record.rank_s,
+                            }
+                        )
+                        + "\n"
+                    )
+    finally:
+        pred_handle.close()
+        rank_handle.close()
+
+    write_skip_log(out_dir / "skip_log.jsonl", skips)
+    report = compute_action_metrics(
+        records,
+        dictionary_id,
+        n_skipped_intervals=len(skips),
+        warmup_s=warmup_s,
+    )
+    (out_dir / f"metrics_{dictionary_id}.json").write_text(
+        json.dumps(report.to_dict(), indent=2), encoding="utf-8"
+    )
+    meta_extra = {
+        "clips_json": str(Path(args.clips_json)),
+        "media_root": str(Path(args.media_root)),
+        "sampling_protocol": "grouped media decode; each source media path is decoded once",
+        "weight_updates": False,
+        "n_input_clips": len(clip_rows),
+        "n_scored_clips": len(records),
+        "n_media_groups": len(grouped),
+        "n_skip_events": len(skips),
+        "batch_size": args.batch_size,
+        "warmup_s": warmup_s,
+        "source_task": clips_payload.get("task"),
+        **_encoder_runtime_meta(args),
+    }
+    if getattr(args, "bank_file", None):
+        meta_extra["custom_taxonomy_files"] = {dictionary_id: str(Path(args.bank_file))}
+    _write_run_meta(
+        out_dir,
+        encoder=encoder,
+        mode="grouped-clips",
+        dictionaries=[dictionary_id],
+        extra=meta_extra,
+    )
+    print(out_dir)
+    return 0
+
+
+def _media_path_for_clip(raw: dict, media_root: Path, video_id: str) -> Path | None:
+    raw_media = raw.get("media_path")
+    if raw_media:
+        path = Path(str(raw_media))
+        if path.is_file():
+            return path
+        rooted = media_root / path
+        if rooted.is_file():
+            return rooted
+    return _find_clip_media(media_root, video_id)
+
+
+def _rank_frame_batch(encoder, frames: np.ndarray, text, labels: list[str], clip_ids: list[str], identity_keys):
+    scorer = getattr(encoder, "score_clip_texts", None)
+    if callable(scorer):
+        similarities = scorer(frames, text)
+        return [
+            ranking_from_similarities(row, labels, clip_id=clip_id, identity_keys=identity_keys)
+            for row, clip_id in zip(similarities, clip_ids, strict=True)
+        ]
+    clip_embeddings = encode_clip_batch(frames, encoder)
+    return [
+        rank_actions(clip_embedding, text, labels, clip_id=clip_id, identity_keys=identity_keys)
+        for clip_embedding, clip_id in zip(clip_embeddings, clip_ids, strict=True)
+    ]
+
+
+def _sample_video_group_once(
+    path: Path,
+    clips: list[tuple[str, GoldInterval]],
+    *,
+    num_frames: int,
+) -> dict[str, np.ndarray]:
+    try:
+        import av
+    except ImportError as exc:
+        raise ClipDecodeError("PyAV is required for grouped clip decoding") from exc
+    if not path.is_file():
+        raise ClipDecodeError(f"Unreadable clip group: missing file {path}")
+    targets: list[tuple[float, str, int]] = []
+    for clip_id, interval in clips:
+        for frame_index, target_sec in enumerate(np.linspace(interval.start_sec, interval.end_sec, num_frames)):
+            targets.append((float(target_sec), clip_id, frame_index))
+    targets.sort(key=lambda row: row[0])
+    if not targets:
+        return {}
+
+    output = {clip_id: np.zeros((num_frames, 3, 224, 224), dtype=np.float32) for clip_id, _ in clips}
+    filled = {clip_id: np.zeros(num_frames, dtype=bool) for clip_id, _ in clips}
+    target_index = 0
+    last_chw: np.ndarray | None = None
+    container = None
+    try:
+        container = av.open(str(path))
+        stream = container.streams.video[0]
+        stream.thread_type = "AUTO"
+        for frame in container.decode(stream):
+            if target_index >= len(targets):
+                break
+            ts = _frame_time(frame, stream)
+            if ts < targets[target_index][0]:
+                continue
+            last_chw = _resize_rgb_to_chw(frame.to_ndarray(format="rgb24"))
+            while target_index < len(targets) and ts >= targets[target_index][0]:
+                _, clip_id, frame_index = targets[target_index]
+                output[clip_id][frame_index] = last_chw
+                filled[clip_id][frame_index] = True
+                target_index += 1
+    except Exception as exc:  # noqa: BLE001
+        raise ClipDecodeError(str(exc)) from exc
+    finally:
+        if container is not None:
+            with contextlib.suppress(Exception):
+                container.close()
+
+    if target_index < len(targets) and last_chw is not None:
+        while target_index < len(targets):
+            _, clip_id, frame_index = targets[target_index]
+            output[clip_id][frame_index] = last_chw
+            filled[clip_id][frame_index] = True
+            target_index += 1
+    return {clip_id: frames for clip_id, frames in output.items() if bool(filled[clip_id].all())}
+
+
+def _frame_time(frame, stream) -> float:
+    if frame.time is not None:
+        return float(frame.time)
+    if frame.pts is None:
+        return 0.0
+    return float(frame.pts * stream.time_base)
+
+
+def _resize_rgb_to_chw(rgb: np.ndarray, height: int = 224, width: int = 224) -> np.ndarray:
+    src_h, src_w = rgb.shape[:2]
+    ys = np.linspace(0, src_h - 1, height).astype(np.int32)
+    xs = np.linspace(0, src_w - 1, width).astype(np.int32)
+    resized = rgb[ys][:, xs]
+    if resized.shape[-1] == 3:
+        chw = np.transpose(resized, (2, 0, 1))
+    else:
+        chw = np.repeat(resized[..., None], 3, axis=2).transpose(2, 0, 1)
+    return chw.astype(np.float32) / 255.0
 
 
 class _RandomEncoderMeta:
@@ -806,7 +1163,14 @@ def run_faes_clips(args: argparse.Namespace) -> int:
         raise SystemExit(f"No clips found in {args.clips_json}")
 
     encoder, warmup_load_s = elapsed(
-        lambda: get_encoder(args.encoder, num_frames=getattr(args, "num_frames", None))
+        lambda: get_encoder(
+            args.encoder,
+            num_frames=getattr(args, "num_frames", None),
+            device=getattr(args, "device", None),
+            dtype=getattr(args, "dtype", "auto"),
+            internvideo2_checkpoint_path=getattr(args, "internvideo2_checkpoint_path", None),
+            internvideo2_checkpoint_repo=getattr(args, "internvideo2_checkpoint_repo", None),
+        )
     )
     rows = load_dictionary_rows(dictionary_id)
     labels = [row.label for row in rows]
@@ -1006,6 +1370,35 @@ def run_download_slice(args: argparse.Namespace) -> int:
     return 0
 
 
+def run_internvideo2_preflight(args: argparse.Namespace) -> int:
+    from action_ranker.internvideo2_encoder import internvideo2_preflight
+
+    model_id = INTERNVIDEO2_MODEL_IDS[args.model]
+    report = internvideo2_preflight(model_id, dtype=args.dtype, device=args.device)
+    if getattr(args, "internvideo2_checkpoint_path", None):
+        report["checkpoint_path"] = str(Path(args.internvideo2_checkpoint_path))
+        report["checkpoint_path_exists"] = Path(args.internvideo2_checkpoint_path).is_file()
+    if getattr(args, "internvideo2_checkpoint_repo", None):
+        report["checkpoint_repo"] = args.internvideo2_checkpoint_repo
+    print(json.dumps(report, indent=2))
+    return 0 if report.get("runnable_on_gpu") or args.device == "cpu" else 1
+
+
+def _add_encoder_runtime_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--device", default="auto", choices=["auto", "cuda", "cpu"])
+    parser.add_argument("--dtype", default="auto", choices=["auto", "float16", "bfloat16", "float32"])
+    parser.add_argument(
+        "--internvideo2-checkpoint-path",
+        default=None,
+        help="Local InternVideo2 1B .pt checkpoint; bypasses gated HF checkpoint download.",
+    )
+    parser.add_argument(
+        "--internvideo2-checkpoint-repo",
+        default=None,
+        help="HF repo containing InternVideo2-stage2_1b-224p-f4.pt; default is OpenGVLab gated repo.",
+    )
+
+
 def _valid_interval(interval: GoldInterval) -> bool:
     return np.isfinite(interval.start_sec) and np.isfinite(interval.end_sec) and interval.end_sec > interval.start_sec
 
@@ -1038,7 +1431,20 @@ def _write_run_meta(out_dir: Path, encoder, mode: str, dictionaries: list[str], 
         "constitution": "inference-only frozen video-text ranking",
         **extra_payload,
     }
+    load_info = getattr(encoder, "load_info", None)
+    if load_info is not None:
+        meta["encoder_load_info"] = load_info
     (out_dir / "run_meta.json").write_text(json.dumps(meta, indent=2), encoding="utf-8")
+
+
+def _encoder_runtime_meta(args: argparse.Namespace) -> dict:
+    keys = (
+        "device",
+        "dtype",
+        "internvideo2_checkpoint_path",
+        "internvideo2_checkpoint_repo",
+    )
+    return {key: value for key in keys if (value := getattr(args, key, None)) is not None}
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -1046,7 +1452,7 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="mode", required=True)
 
     one = sub.add_parser("one-clip")
-    one.add_argument("--encoder", choices=["stub", "xclip", "xclip-zs"], default="stub")
+    one.add_argument("--encoder", choices=ENCODER_CHOICES, default="stub")
     one.add_argument("--run-id", default=None)
     one.add_argument("--bank", default="assembly101_coarse")
     one.add_argument("--video", default=None)
@@ -1056,17 +1462,19 @@ def build_parser() -> argparse.ArgumentParser:
     one.add_argument("--synthetic", action="store_true")
     one.add_argument("--seed", type=int, default=0)
     one.add_argument("--num-frames", type=int, default=None)
+    _add_encoder_runtime_args(one)
     one.set_defaults(func=run_one_clip)
 
     sl = sub.add_parser("slice")
-    sl.add_argument("--encoder", choices=["stub", "xclip", "xclip-zs"], default="stub")
+    sl.add_argument("--encoder", choices=ENCODER_CHOICES, default="stub")
     sl.add_argument("--run-id", default=None)
     sl.add_argument("--rebuild-slice", action="store_true")
     sl.add_argument("--num-frames", type=int, default=None)
+    _add_encoder_runtime_args(sl)
     sl.set_defaults(func=run_slice)
 
     clips = sub.add_parser("clips")
-    clips.add_argument("--encoder", choices=["stub", "xclip", "xclip-zs"], default="xclip")
+    clips.add_argument("--encoder", choices=ENCODER_CHOICES, default="xclip")
     clips.add_argument("--run-id", default=None)
     clips.add_argument("--clips-json", required=True)
     clips.add_argument("--media-root", required=True)
@@ -1074,7 +1482,21 @@ def build_parser() -> argparse.ArgumentParser:
     clips.add_argument("--bank-file", default=None)
     clips.add_argument("--dataset", default="assembly101")
     clips.add_argument("--num-frames", type=int, default=None)
+    _add_encoder_runtime_args(clips)
     clips.set_defaults(func=run_clips)
+
+    grouped = sub.add_parser("grouped-clips")
+    grouped.add_argument("--encoder", choices=ENCODER_CHOICES, default="xclip")
+    grouped.add_argument("--run-id", default=None)
+    grouped.add_argument("--clips-json", required=True)
+    grouped.add_argument("--media-root", required=True)
+    grouped.add_argument("--bank", default="assembly101_coarse")
+    grouped.add_argument("--bank-file", default=None)
+    grouped.add_argument("--dataset", default="assembly101")
+    grouped.add_argument("--num-frames", type=int, default=None)
+    grouped.add_argument("--batch-size", type=int, default=8)
+    _add_encoder_runtime_args(grouped)
+    grouped.set_defaults(func=run_grouped_clips)
 
     random = sub.add_parser("random-clips")
     random.add_argument("--run-id", default=None)
@@ -1099,6 +1521,14 @@ def build_parser() -> argparse.ArgumentParser:
     dl = sub.add_parser("download-slice")
     dl.add_argument("--dry-run", action="store_true")
     dl.set_defaults(func=run_download_slice)
+
+    iv2 = sub.add_parser("internvideo2-preflight")
+    iv2.add_argument("--model", choices=sorted(INTERNVIDEO2_MODEL_IDS), default="internvideo2-1b")
+    iv2.add_argument("--device", default="auto", choices=["auto", "cuda", "cpu"])
+    iv2.add_argument("--dtype", default="auto", choices=["auto", "float16", "bfloat16", "float32"])
+    iv2.add_argument("--internvideo2-checkpoint-path", default=None)
+    iv2.add_argument("--internvideo2-checkpoint-repo", default=None)
+    iv2.set_defaults(func=run_internvideo2_preflight)
     return parser
 
 

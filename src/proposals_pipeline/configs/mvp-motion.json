@@ -1,0 +1,26 @@
+{
+  "benchmark": "none",
+  "objective": {
+    "metric": "f1",
+    "tolerance_s": 1.0
+  },
+  "sources": {
+    "motion": {
+      "signal": "r",
+      "mode": "peak",
+      "sigma": 2,
+      "prominence": 1.0,
+      "min_distance_s": 0.5
+    }
+  },
+  "fusion": {
+    "weights": {
+      "motion": 1.0,
+      "abd": 0.0,
+      "sam3": 0.0
+    },
+    "nms_window_s": 0.5,
+    "min_fused_score": 0.0
+  },
+  "sam3_fps": 4.0
+}

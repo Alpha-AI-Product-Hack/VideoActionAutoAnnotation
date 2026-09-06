@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from action_ranker.rank import gold_rank_1based, rank_actions, ranking_from_similarities
 from action_ranker.types import ActionRanking
@@ -31,7 +32,7 @@ def test_ranking_from_similarities_sorts_descending_cosine():
     )
     assert ranking.pred_action == "b"
     assert ranking.labels == ["b", "c", "a"]
-    assert ranking.cosine_similarity[0] == 0.9
+    assert ranking.cosine_similarity[0] == pytest.approx(0.9)
 
 
 def test_epic_gold_rank_uses_verb_noun_ids():

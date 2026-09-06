@@ -70,7 +70,7 @@ class XClipEncoder:
             uint8 = np.clip(thwc * 255.0, 0, 255).astype(np.uint8)
             videos.append([frame for frame in uint8])
         with self.torch.no_grad():
-            inputs = self.processor(videos=videos, return_tensors="pt")
+            inputs = self._process_videos(videos)
             pixel = inputs["pixel_values"].to(self.device)
             feats = self.model.get_video_features(pixel_values=pixel)
         return self._to_numpy(feats)
@@ -106,7 +106,7 @@ class XClipEncoder:
         model = self.model
         torch = self.torch
         with torch.no_grad():
-            inputs = self.processor(videos=videos, return_tensors="pt")
+            inputs = self._process_videos(videos)
             pixel_values = inputs["pixel_values"].to(self.device)
             batch_size, num_frames, num_channels, height, width = pixel_values.shape
             flat = pixel_values.reshape(-1, num_channels, height, width)
@@ -152,7 +152,7 @@ class XClipEncoder:
         model = self.model
         torch = self.torch
         with torch.no_grad():
-            inputs = self.processor(videos=videos, return_tensors="pt")
+            inputs = self._process_videos(videos)
             pixel_values = inputs["pixel_values"].to(self.device)
             batch_size, num_frames, num_channels, height, width = pixel_values.shape
             flat = pixel_values.reshape(-1, num_channels, height, width)
@@ -191,6 +191,14 @@ class XClipEncoder:
                     padding=True,
                     truncation=True,
                 )
+                if "pixel_values" not in inputs:
+                    inputs = self.processor(
+                        text=list(prompts),
+                        images=video,
+                        return_tensors="pt",
+                        padding=True,
+                        truncation=True,
+                    )
                 kwargs = {
                     key: value.to(self.device)
                     for key, value in inputs.items()
@@ -204,6 +212,20 @@ class XClipEncoder:
                 cosine = logits / scale
                 rows.append(cosine.reshape(-1).detach().cpu().numpy().astype(np.float32))
         return np.stack(rows, axis=0)
+
+    def _process_videos(self, videos: list[list[np.ndarray]]):
+        inputs = self.processor(videos=videos, return_tensors="pt")
+        if "pixel_values" not in inputs:
+            inputs = self.processor(images=videos, return_tensors="pt")
+        pixel_values = inputs["pixel_values"]
+        if pixel_values.ndim == 4:
+            if pixel_values.shape[0] % self.num_frames != 0:
+                raise ValueError("X-CLIP processor returned an unexpected frame batch shape")
+            pixel_values = pixel_values.reshape(-1, self.num_frames, *pixel_values.shape[1:])
+            inputs["pixel_values"] = pixel_values
+        if pixel_values.ndim != 5:
+            raise ValueError("X-CLIP processor must return pixel_values with shape [B,T,C,H,W]")
+        return inputs
 
     def _to_numpy(self, feats) -> np.ndarray:
         if hasattr(feats, "pooler_output"):
