@@ -12,37 +12,63 @@
     
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
         :root {
-            --brand-blue: #0066CC;
-            --brand-green: #009966;
-            --brand-orange: #E67E22;
-            --brand-gray: #464646;
+            /* Matched to frontend dark theme for presentation */
+            --brand-bg: #09090f;
+            --brand-panel: #10111a;
+            --brand-text: #e4e8f0;
+            --brand-text-muted: #9ba3bf;
+            --brand-border: #1f2235;
+            
+            /* Action colors from frontend */
+            --brand-accent: #00d4aa;       /* Primary accent */
+            --brand-blue: #4f7df7;         /* Action A */
+            --brand-green: #00d4aa;        /* Accent used as green */
+            --brand-orange: #f59e0b;       /* Action C / Warn */
+            --brand-purple: #a855f7;       /* Action B */
+            --brand-gray: #6b7291;
         }
 
         body {
             font-family: 'Inter', sans-serif;
+            background-color: var(--brand-bg);
+            color: var(--brand-text);
+        }
+        
+        .reveal {
+            background-color: var(--brand-bg);
+            color: var(--brand-text);
         }
 
         .reveal .slides {
             text-align: left;
         }
+        
+        /* Override reveal.js default text colors */
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4, .reveal h5, .reveal h6 {
+            color: var(--brand-text);
+        }
 
-        /* Slide Header (Beamer style) */
+        /* Slide Header */
         .slide-header {
             position: absolute;
             top: 0;
             left: 0;
             width: 100%;
-            background-color: var(--brand-blue);
-            color: white;
+            background-color: var(--brand-panel);
+            color: var(--brand-accent);
             padding: 15px 40px;
             box-sizing: border-box;
             font-size: 36px;
             font-weight: 700;
             z-index: 10;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+            border-bottom: 1px solid var(--brand-border);
         }
 
         .slide-content {
@@ -52,6 +78,7 @@
             box-sizing: border-box;
             font-size: 26px;
             line-height: 1.4;
+            color: var(--brand-text);
         }
 
         /* Title Slide */
@@ -62,17 +89,18 @@
             align-items: center;
             height: 100%;
             text-align: center;
-            background: linear-gradient(135deg, rgba(0,102,204,0.05) 0%, rgba(0,153,102,0.05) 100%);
+            background: radial-gradient(circle at center, var(--brand-panel) 0%, var(--brand-bg) 100%);
         }
         .title-slide h1 {
-            color: var(--brand-blue);
+            color: var(--brand-accent);
             font-size: 56px;
             font-weight: 800;
             margin-bottom: 20px;
             text-transform: none;
+            text-shadow: 0 0 20px rgba(0, 212, 170, 0.2);
         }
         .title-slide h2 {
-            color: var(--brand-gray);
+            color: var(--brand-text);
             font-size: 32px;
             font-weight: 400;
             margin-bottom: 40px;
@@ -80,54 +108,159 @@
         }
         .title-slide .meta {
             font-size: 24px;
-            color: #666;
+            color: var(--brand-text-muted);
+            background: rgba(31, 34, 53, 0.5);
+            padding: 15px 30px;
+            border-radius: 8px;
+            border: 1px solid var(--brand-border);
         }
 
         /* Blocks */
         .block {
             border-radius: 8px;
             margin-bottom: 20px;
-            border: 1px solid #e0e0e0;
+            border: 1px solid var(--brand-border);
             overflow: hidden;
-            background: #fff;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            background: var(--brand-panel);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
         }
         .block-header {
             padding: 12px 20px;
             font-weight: 700;
             font-size: 26px;
-            color: white;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
         .block-body {
             padding: 16px 20px;
             font-size: 24px;
+            color: var(--brand-text);
         }
         
         .block.blue .block-header { background: var(--brand-blue); }
-        .block.blue .block-body { background: rgba(0,102,204,0.03); }
+        .block.blue .block-body { background: rgba(79, 125, 247, 0.05); }
         
-        .block.green .block-header { background: var(--brand-green); }
-        .block.green .block-body { background: rgba(0,153,102,0.03); }
+        .block.green .block-header { background: var(--brand-green); color: #000; }
+        .block.green .block-body { background: rgba(0, 212, 170, 0.05); }
         
-        .block.orange .block-header { background: var(--brand-orange); }
-        .block.orange .block-body { background: rgba(230,126,34,0.03); }
+        .block.orange .block-header { background: var(--brand-orange); color: #000; }
+        .block.orange .block-body { background: rgba(245, 158, 11, 0.05); }
 
         /* Pills */
         .pill {
             display: inline-block;
             padding: 4px 14px;
             border-radius: 16px;
-            color: white;
+            color: #fff;
             font-size: 18px;
             font-weight: 700;
             margin-right: 10px;
             vertical-align: middle;
         }
         .pill.blue { background-color: var(--brand-blue); }
-        .pill.green { background-color: var(--brand-green); }
-        .pill.orange { background-color: var(--brand-orange); }
+        .pill.green { background-color: var(--brand-green); color: #000; }
+        .pill.orange { background-color: var(--brand-orange); color: #000; }
         .pill.gray { background-color: var(--brand-gray); }
 
+        /* Custom Architecture Flow Layout */
+        .arch-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 10px 0;
+            position: relative;
+        }
+        .arch-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border-radius: 12px;
+            padding: 15px;
+            width: 22%;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            border: 1px solid var(--brand-border);
+        }
+        .arch-node.user { background: var(--brand-panel); border: 2px solid var(--brand-gray); color: var(--brand-text); }
+        .arch-node.ui { background: var(--brand-blue); color: white; }
+        .arch-node.api { background: var(--brand-green); color: #000; }
+        .arch-node.ml { background: var(--brand-orange); color: #000; }
+        
+        .arch-node .title { font-weight: 700; font-size: 22px; margin-bottom: 5px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+        .arch-node .subtitle { font-size: 16px; opacity: 0.9; }
+        
+        .arch-arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            position: relative;
+            color: var(--brand-gray);
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .arch-arrow::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: var(--brand-border);
+            z-index: 1;
+        }
+        
+        .arch-arrow .arrow-label {
+            padding: 0 8px;
+            z-index: 2;
+            position: relative;
+            margin-bottom: 25px;
+            background: var(--brand-panel);
+            font-size: 16px;
+            color: var(--brand-text-muted);
+            border: none;
+        }
+
+        .arch-arrow.bidirectional::after {
+            content: '◄ \00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0 ►';
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            text-align: justify;
+            transform: translateY(-50%);
+            color: var(--brand-gray);
+            font-size: 16px;
+            z-index: 2;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .arch-arrow.unidirectional::after {
+            content: '►';
+            position: absolute;
+            top: 50%;
+            right: -2px;
+            transform: translateY(-50%);
+            color: var(--brand-gray);
+            font-size: 16px;
+            z-index: 2;
+        }
+        
+        /* Helpers */
+        .text-blue { color: var(--brand-blue); font-weight: 700; }
+        .text-green { color: var(--brand-green); font-weight: 700; }
+        .text-orange { color: var(--brand-orange); font-weight: 700; }
+        .text-gray { color: var(--brand-gray); font-weight: 700; }
+        
         /* Layout */
         .cols {
             display: flex;
@@ -161,136 +294,42 @@
             width: 100%;
             border-collapse: collapse;
             font-size: 22px;
+            color: var(--brand-text);
         }
         th, td {
             padding: 12px 16px;
             text-align: left;
-            border-bottom: 1px solid #e0e0e0;
+            border-bottom: 1px solid var(--brand-border);
         }
         th {
             font-weight: 700;
             border-bottom: 2px solid var(--brand-gray);
-            color: var(--brand-gray);
+            color: var(--brand-text-muted);
         }
         tr:last-child td {
             border-bottom: 2px solid var(--brand-gray);
         }
-
-        /* Custom Architecture Flow Layout */
-        .arch-flow {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            width: 100%;
-            padding: 10px 0;
-            position: relative;
-        }
-        .arch-node {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            border-radius: 12px;
-            padding: 15px;
-            width: 22%;
-            position: relative;
-            z-index: 2;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        .arch-node.user { background: #f8f9fa; border: 2px solid #ccc; color: #333; }
-        .arch-node.ui { background: var(--brand-blue); color: white; }
-        .arch-node.api { background: var(--brand-green); color: white; }
-        .arch-node.ml { background: var(--brand-orange); color: white; }
-        
-        .arch-node .title { font-weight: 700; font-size: 22px; margin-bottom: 5px; }
-        .arch-node .subtitle { font-size: 16px; opacity: 0.9; }
-        
-        .arch-arrow {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            flex: 1;
-            position: relative;
-            color: var(--brand-gray);
-            font-weight: 600;
-            font-size: 16px;
-        }
-        
-        .arch-arrow::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background-color: #ccc;
-            z-index: 1;
-        }
-        
-        .arch-arrow .arrow-label {
-            padding: 0 8px;
-            z-index: 2;
-            position: relative;
-            margin-bottom: 25px; /* Pushes text above the arrow line */
-            background: #fff; /* Masks the line behind text */
-            font-size: 16px;
-            color: #555;
-            border: none;
-        }
-
-        .arch-arrow.bidirectional::after {
-            content: '◄ \00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0 ►';
-            position: absolute;
-            top: 50%;
-            width: 100%;
-            text-align: justify;
-            transform: translateY(-50%);
-            color: #999;
-            font-size: 16px;
-            z-index: 2;
-            pointer-events: none;
-            display: flex;
-            justify-content: space-between;
-        }
-        
-        .arch-arrow.unidirectional::after {
-            content: '►';
-            position: absolute;
-            top: 50%;
-            right: -2px;
-            transform: translateY(-50%);
-            color: #999;
-            font-size: 16px;
-            z-index: 2;
-        }
-        
-        /* Helpers */
-        .text-blue { color: var(--brand-blue); font-weight: 700; }
-        .text-green { color: var(--brand-green); font-weight: 700; }
-        .text-orange { color: var(--brand-orange); font-weight: 700; }
-        .text-gray { color: var(--brand-gray); font-weight: 700; }
         
         .mt-4 { margin-top: 16px; }
         .mb-4 { margin-bottom: 16px; }
         .mb-0 { margin-bottom: 0 !important; }
+        
         /* Custom Table Styles for Slide 6 */
         .team-table {
             font-size: 16px;
             width: 100%;
         }
         .team-table th {
-            background: var(--brand-blue);
-            color: white;
+            background: var(--brand-panel);
+            color: var(--brand-accent);
             font-size: 18px;
             padding: 10px;
-            border-bottom: none;
+            border-bottom: 1px solid var(--brand-border);
         }
         .team-table td {
             padding: 10px;
             vertical-align: top;
-            border-bottom: 1px solid #eee;
+            border-bottom: 1px solid var(--brand-border);
         }
         .team-table tr:last-child td {
             border-bottom: none;
@@ -324,7 +363,7 @@
                 <div class="slide-header">1. Проблема и Продукт</div>
                 <div class="slide-content">
                     <div class="block blue mb-4">
-                        <div class="block-header">Суть решения</div>
+                        <div class="block-header"><i data-lucide="target"></i> Суть решения</div>
                         <div class="block-body">
                             <ul>
                                 <li><strong>Продукт:</strong> Веб-приложение для автоматической разметки действий на видео</li>
@@ -337,7 +376,7 @@
                     <div class="cols">
                         <div class="col col-50">
                             <div class="block orange mb-0" style="height: 100%;">
-                                <div class="block-header">Проблематика</div>
+                                <div class="block-header"><i data-lucide="alert-triangle"></i> Проблематика</div>
                                 <div class="block-body">
                                     <ul>
                                         <li><strong>Долго:</strong> 15–30 минут ручного труда на 1 короткий ролик</li>
@@ -349,7 +388,7 @@
                         </div>
                         <div class="col col-50">
                             <div class="block green mb-0" style="height: 100%;">
-                                <div class="block-header">Ценность для процесса</div>
+                                <div class="block-header"><i data-lucide="zap"></i> Ценность для процесса</div>
                                 <div class="block-body">
                                     <ul>
                                         <li><strong>Скорость:</strong> 4–10 мин вместо 15–30 мин / ролик</li>
@@ -367,22 +406,46 @@
                 <div class="slide-header">2. Демонстрация решения</div>
                 <div class="slide-content">
                     <div class="block blue mb-4">
-                        <div class="block-header">Один ключевой сценарий</div>
-                        <div class="block-body">
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 22px; padding: 10px 0;">
-                                <div><span class="pill blue">1. Upload</span> Загрузка видео</div>
-                                <div>➜</div>
-                                <div><span class="pill orange">2. Auto-Label</span> Поиск действий</div>
-                                <div>➜</div>
-                                <div><span class="pill green">3. Fix</span> Правка (HITL)</div>
-                                <div>➜</div>
-                                <div><span class="pill gray">4. Export</span> JSON/CSV</div>
+                        <div class="block-header"><i data-lucide="play-circle"></i> Один ключевой сценарий</div>
+                        <div class="block-body" style="padding: 25px 20px; background: var(--brand-panel);">
+                            <div class="arch-flow">
+                                <div class="arch-node ui" style="width: 20%; background: var(--brand-blue); color: #fff;">
+                                    <div class="title" style="font-size: 18px;"><i data-lucide="upload-cloud"></i> 1. Upload</div>
+                                    <div class="subtitle" style="font-size: 14px;">Загрузка видео</div>
+                                </div>
+                                
+                                <div class="arch-arrow unidirectional">
+                                    <div class="arrow-label" style="font-size: 14px; margin-bottom: 20px; background: transparent;"></div>
+                                </div>
+                                
+                                <div class="arch-node ml" style="width: 20%; background: var(--brand-orange); color: #000;">
+                                    <div class="title" style="font-size: 18px;"><i data-lucide="cpu"></i> 2. Auto-Label</div>
+                                    <div class="subtitle" style="font-size: 14px;">Поиск действий</div>
+                                </div>
+                                
+                                <div class="arch-arrow unidirectional">
+                                    <div class="arrow-label" style="font-size: 14px; margin-bottom: 20px; background: transparent;"></div>
+                                </div>
+                                
+                                <div class="arch-node api" style="width: 20%; background: var(--brand-green); color: #000;">
+                                    <div class="title" style="font-size: 18px;"><i data-lucide="edit-3"></i> 3. Fix</div>
+                                    <div class="subtitle" style="font-size: 14px;">Правка (HITL)</div>
+                                </div>
+                                
+                                <div class="arch-arrow unidirectional">
+                                    <div class="arrow-label" style="font-size: 14px; margin-bottom: 20px; background: transparent;"></div>
+                                </div>
+                                
+                                <div class="arch-node user" style="width: 20%; background: var(--brand-panel); color: var(--brand-text); border: 2px solid var(--brand-gray);">
+                                    <div class="title" style="font-size: 18px;"><i data-lucide="download"></i> 4. Export</div>
+                                    <div class="subtitle" style="font-size: 14px;">JSON/CSV</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                     
                     <div class="block green mt-4">
-                        <div class="block-header">Переход к живому прототипу</div>
+                        <div class="block-header"><i data-lucide="monitor-play"></i> Переход к живому прототипу</div>
                         <div class="block-body" style="text-align: center; font-size: 28px; padding: 30px;">
                             <em>Без предзаписанных видео и макетов.</em><br><br>
                             <strong>Только работающий код.</strong>
@@ -396,11 +459,11 @@
                 <div class="slide-header">3. Технологии под капотом</div>
                 <div class="slide-content">
                     <div class="block blue mb-4">
-                        <div class="block-header">Архитектура системы: 3 независимых слоя</div>
-                        <div class="block-body" style="padding: 25px 20px; background: #fff;">
+                        <div class="block-header"><i data-lucide="layers"></i> Архитектура системы: 3 независимых слоя</div>
+                        <div class="block-body" style="padding: 25px 20px; background: var(--brand-panel);">
                             <div class="arch-flow">
                                 <div class="arch-node user">
-                                    <div class="title">Пользователь</div>
+                                    <div class="title"><i data-lucide="user"></i> Пользователь</div>
                                     <div class="subtitle">Видео + Правила</div>
                                 </div>
                                 
@@ -409,7 +472,7 @@
                                 </div>
                                 
                                 <div class="arch-node ui">
-                                    <div class="title">Frontend (UI)</div>
+                                    <div class="title"><i data-lucide="layout-template"></i> Frontend (UI)</div>
                                     <div class="subtitle">React + Tailwind</div>
                                 </div>
                                 
@@ -418,7 +481,7 @@
                                 </div>
                                 
                                 <div class="arch-node api">
-                                    <div class="title">Backend (API)</div>
+                                    <div class="title"><i data-lucide="server"></i> Backend (API)</div>
                                     <div class="subtitle">FastAPI</div>
                                 </div>
                                 
@@ -427,7 +490,7 @@
                                 </div>
                                 
                                 <div class="arch-node ml">
-                                    <div class="title">ML Pipeline</div>
+                                    <div class="title"><i data-lucide="brain-circuit"></i> ML Pipeline</div>
                                     <div class="subtitle" style="font-size: 14px;">1. Нарезка: SAM3 + ABD + Motion<br/>2. Семантика: X-CLIP Ranking</div>
                                 </div>
                             </div>
@@ -440,7 +503,7 @@
                     <div class="cols">
                         <div class="col col-33">
                             <div class="block blue mb-0" style="height: 100%;">
-                                <div class="block-header" style="font-size: 20px;">UI (Frontend)</div>
+                                <div class="block-header" style="font-size: 20px;"><i data-lucide="layout-template"></i> UI (Frontend)</div>
                                 <div class="block-body" style="font-size: 19px;">
                                     <ul>
                                         <li><strong>Роль:</strong> Интерактивный редактор</li>
@@ -451,7 +514,7 @@
                         </div>
                         <div class="col col-33">
                             <div class="block green mb-0" style="height: 100%;">
-                                <div class="block-header" style="font-size: 20px;">API (Backend)</div>
+                                <div class="block-header" style="font-size: 20px;"><i data-lucide="server"></i> API (Backend)</div>
                                 <div class="block-body" style="font-size: 19px;">
                                     <ul>
                                         <li><strong>Роль:</strong> Оркестрация и валидация</li>
@@ -462,7 +525,7 @@
                         </div>
                         <div class="col col-33">
                             <div class="block orange mb-0" style="height: 100%;">
-                                <div class="block-header" style="font-size: 20px;">Pipeline (ML)</div>
+                                <div class="block-header" style="font-size: 20px;"><i data-lucide="brain-circuit"></i> Pipeline (ML)</div>
                                 <div class="block-body" style="font-size: 17px; padding: 12px 16px;">
                                     <ul>
                                         <li><strong>Роль:</strong> Поиск границ и классификация действий</li>
@@ -481,7 +544,7 @@
                 <div class="slide-header">4. Доказательство работы (Метрики)</div>
                 <div class="slide-content">
                     <div class="block blue">
-                        <div class="block-header">Результаты тестирования</div>
+                        <div class="block-header"><i data-lucide="bar-chart-2"></i> Результаты тестирования</div>
                         <div class="block-body" style="padding: 10px 20px;">
                             <table>
                                 <thead>
@@ -529,7 +592,7 @@
                 <div class="slide-header">5. Итоги и План развития</div>
                 <div class="slide-content">
                     <div class="block blue mb-4">
-                        <div class="block-header">Ключевой итог</div>
+                        <div class="block-header"><i data-lucide="check-circle"></i> Ключевой итог</div>
                         <div class="block-body">
                             Продукт <strong>сокращает время разметки на 66%</strong>. ML-инженеры быстрее обучают модели, сохраняя высокое качество данных.
                         </div>
@@ -538,7 +601,7 @@
                     <div class="cols">
                         <div class="col col-50">
                             <div class="block green mb-0" style="height: 100%;">
-                                <div class="block-header">Масштабирование (Бизнес)</div>
+                                <div class="block-header"><i data-lucide="trending-up"></i> Масштабирование (Бизнес)</div>
                                 <div class="block-body">
                                     <ul>
                                         <li><strong>Новые домены:</strong> кухня, сборка на конвейере, склад</li>
@@ -549,7 +612,7 @@
                         </div>
                         <div class="col col-50">
                             <div class="block orange mb-0" style="height: 100%;">
-                                <div class="block-header">Техническое развитие</div>
+                                <div class="block-header"><i data-lucide="wrench"></i> Техническое развитие</div>
                                 <div class="block-body">
                                     <ul>
                                         <li><strong>Active Learning:</strong> ревью только шагов с низким confidence</li>
@@ -567,6 +630,7 @@
                 <div class="slide-header">6. Команда и распределение задач</div>
                 <div class="slide-content">
                     <div class="block blue">
+                        <div class="block-header"><i data-lucide="users"></i> Команда</div>
                         <div class="block-body" style="padding: 10px;">
                             <table class="team-table">
                                 <thead>
@@ -640,6 +704,8 @@
             // Disable default reveal styling affecting our custom layout
             disableLayout: false
         });
+        // Initialize Lucide Icons
+        lucide.createIcons();
     </script>
 </body>
 </html>
