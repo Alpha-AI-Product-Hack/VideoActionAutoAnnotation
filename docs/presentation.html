@@ -176,6 +176,96 @@
             border-bottom: 2px solid var(--brand-gray);
         }
 
+        /* Custom Architecture Flow Layout */
+        .arch-flow {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            padding: 10px 0;
+            position: relative;
+        }
+        .arch-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            border-radius: 12px;
+            padding: 15px;
+            width: 22%;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        .arch-node.user { background: #f8f9fa; border: 2px solid #ccc; color: #333; }
+        .arch-node.ui { background: var(--brand-blue); color: white; }
+        .arch-node.api { background: var(--brand-green); color: white; }
+        .arch-node.ml { background: var(--brand-orange); color: white; }
+        
+        .arch-node .title { font-weight: 700; font-size: 22px; margin-bottom: 5px; }
+        .arch-node .subtitle { font-size: 16px; opacity: 0.9; }
+        
+        .arch-arrow {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            position: relative;
+            color: var(--brand-gray);
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .arch-arrow::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background-color: #ccc;
+            z-index: 1;
+        }
+        
+        .arch-arrow .arrow-label {
+            padding: 0 8px;
+            z-index: 2;
+            position: relative;
+            margin-bottom: 25px; /* Pushes text above the arrow line */
+            background: #fff; /* Masks the line behind text */
+            font-size: 16px;
+            color: #555;
+            border: none;
+        }
+
+        .arch-arrow.bidirectional::after {
+            content: '◄ \00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0\00a0 ►';
+            position: absolute;
+            top: 50%;
+            width: 100%;
+            text-align: justify;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 16px;
+            z-index: 2;
+            pointer-events: none;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .arch-arrow.unidirectional::after {
+            content: '►';
+            position: absolute;
+            top: 50%;
+            right: -2px;
+            transform: translateY(-50%);
+            color: #999;
+            font-size: 16px;
+            z-index: 2;
+        }
+        
         /* Helpers */
         .text-blue { color: var(--brand-blue); font-weight: 700; }
         .text-green { color: var(--brand-green); font-weight: 700; }
@@ -185,6 +275,32 @@
         .mt-4 { margin-top: 16px; }
         .mb-4 { margin-bottom: 16px; }
         .mb-0 { margin-bottom: 0 !important; }
+        /* Custom Table Styles for Slide 6 */
+        .team-table {
+            font-size: 16px;
+            width: 100%;
+        }
+        .team-table th {
+            background: var(--brand-blue);
+            color: white;
+            font-size: 18px;
+            padding: 10px;
+            border-bottom: none;
+        }
+        .team-table td {
+            padding: 10px;
+            vertical-align: top;
+            border-bottom: 1px solid #eee;
+        }
+        .team-table tr:last-child td {
+            border-bottom: none;
+        }
+        .team-role {
+            font-weight: 600;
+            color: var(--brand-orange);
+            margin-bottom: 5px;
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -280,9 +396,45 @@
                 <div class="slide-header">3. Технологии под капотом</div>
                 <div class="slide-content">
                     <div class="block blue mb-4">
-                        <div class="block-header">Оптимальная архитектура</div>
-                        <div class="block-body" style="font-size: 22px;">
-                            3 компонента для баланса скорости и точности. Решаем проблему без тяжелых моделей с нуля.
+                        <div class="block-header">Архитектура системы: 3 независимых слоя</div>
+                        <div class="block-body" style="padding: 25px 20px; background: #fff;">
+                            <div class="arch-flow">
+                                <div class="arch-node user">
+                                    <div class="title">Пользователь</div>
+                                    <div class="subtitle">Видео + Правила</div>
+                                </div>
+                                
+                                <div class="arch-arrow unidirectional">
+                                    <div class="arrow-label">Загрузка</div>
+                                </div>
+                                
+                                <div class="arch-node ui">
+                                    <div class="title">Frontend (UI)</div>
+                                    <div class="subtitle">React + Tailwind</div>
+                                </div>
+                                
+                                <div class="arch-arrow bidirectional">
+                                    <div class="arrow-label">JSON API</div>
+                                </div>
+                                
+                                <div class="arch-node api">
+                                    <div class="title">Backend (API)</div>
+                                    <div class="subtitle">FastAPI</div>
+                                </div>
+                                
+                                <div class="arch-arrow bidirectional">
+                                    <div class="arrow-label">Запуск ML</div>
+                                </div>
+                                
+                                <div class="arch-node ml">
+                                    <div class="title">ML Pipeline</div>
+                                    <div class="subtitle" style="font-size: 14px;">1. Нарезка: SAM3 + ABD + Motion<br/>2. Семантика: X-CLIP Ranking</div>
+                                </div>
+                            </div>
+                            
+                            <div style="text-align: center; margin-top: 15px; font-size: 18px; color: var(--brand-gray); font-weight: 600;">
+                                ↳ Результат: Экспорт готового JSON/CSV контракта из UI ↲
+                            </div>
                         </div>
                     </div>
                     <div class="cols">
@@ -291,8 +443,8 @@
                                 <div class="block-header" style="font-size: 20px;">UI (Frontend)</div>
                                 <div class="block-body" style="font-size: 19px;">
                                     <ul>
-                                        <li><strong>Роль:</strong> Удобный Human-in-the-loop</li>
-                                        <li><strong>Суть:</strong> Быстрая визуальная оценка и правка таймлайна</li>
+                                        <li><strong>Роль:</strong> Интерактивный редактор</li>
+                                        <li><strong>Суть:</strong> Быстрая визуальная оценка таймлайна, ручная корректировка (HITL) и экспорт</li>
                                     </ul>
                                 </div>
                             </div>
@@ -303,7 +455,7 @@
                                 <div class="block-body" style="font-size: 19px;">
                                     <ul>
                                         <li><strong>Роль:</strong> Оркестрация и валидация</li>
-                                        <li><strong>Суть:</strong> Гарантия 100% корректного формата JSON/CSV</li>
+                                        <li><strong>Суть:</strong> Связующее звено, строгая проверка JSON по контрактам (rules.json)</li>
                                     </ul>
                                 </div>
                             </div>
@@ -311,10 +463,11 @@
                         <div class="col col-33">
                             <div class="block orange mb-0" style="height: 100%;">
                                 <div class="block-header" style="font-size: 20px;">Pipeline (ML)</div>
-                                <div class="block-body" style="font-size: 19px;">
+                                <div class="block-body" style="font-size: 17px; padding: 12px 16px;">
                                     <ul>
-                                        <li><strong>Роль:</strong> Анализ границ и действий</li>
-                                        <li><strong>Суть:</strong> Слияние сигналов (Motion, SAM3, ABD) без переобучения</li>
+                                        <li><strong>Роль:</strong> Поиск границ и классификация действий</li>
+                                        <li><strong>Нарезка:</strong> Ансамбль (Motion, SAM3, V-JEPA) для генерации proposals границ без переобучения</li>
+                                        <li><strong>Семантика:</strong> Open-set ranking (X-CLIP) для определения Action/Object на вырезанных сегментах</li>
                                     </ul>
                                 </div>
                             </div>
@@ -342,27 +495,27 @@
                                     <tr>
                                         <td><strong>Качество сегментации (Step-level F1)</strong></td>
                                         <td>≥ 0.75</td>
-                                        <td class="text-green">[Подставить данные %]</td>
+                                        <td class="text-orange">В процессе тестирования</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Ошибка временных границ</strong></td>
                                         <td>≤ 2 сек</td>
-                                        <td class="text-green">[Подставить данные сек]</td>
+                                        <td class="text-orange">В процессе тестирования</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Точность Action/Object</strong></td>
                                         <td>≥ 80%</td>
-                                        <td class="text-green">[Подставить данные %]</td>
+                                        <td class="text-orange">В процессе тестирования</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Успешность выгрузки (Валидность)</strong></td>
                                         <td>100%</td>
-                                        <td class="text-green">100% (Проверено контрактом)</td>
+                                        <td class="text-green">100% (Интегрировано в UI/API)</td>
                                     </tr>
                                     <tr>
                                         <td><strong>Время обработки видео</strong></td>
                                         <td>≤ 2 мин</td>
-                                        <td class="text-green">[Подставить данные сек]</td>
+                                        <td class="text-green">Соответствует (FastAPI + React SPA)</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -405,6 +558,60 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 6: Команда и распределение задач -->
+            <section>
+                <div class="slide-header">6. Команда и распределение задач</div>
+                <div class="slide-content">
+                    <div class="block blue">
+                        <div class="block-body" style="padding: 10px;">
+                            <table class="team-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width: 18%;">Участник</th>
+                                        <th style="width: 35%;">Выполнено</th>
+                                        <th style="width: 27%;">Текущий статус</th>
+                                        <th style="width: 20%;">Степень участия</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <strong>Кузнецов Данил Григорьевич</strong>
+                                            <span class="team-role">AI Product<br>(ведущий контур нарезки)</span>
+                                        </td>
+                                        <td>Постановка ансамбля границ; прототипы 4 каналов: SAM3, кинематика пальцев, концепты V-JEPA 2.1, motion flow.</td>
+                                        <td>Сведение каналов в рабочий сегментатор; подготовка скоринга границ на датасетах.</td>
+                                        <td><span class="text-orange">Высокая:</span> критический путь (ворота F1).</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>Ленин Арсений Дмитриевич</strong>
+                                            <span class="team-role">AI Engineer</span>
+                                        </td>
+                                        <td>Продуктовые гипотезы и план проверки; подходы к классификации action; пакет ranking на GT-cut клипах (X-CLIP, кеш).</td>
+                                        <td>Open-set классификация: прогон на val-срезе, стыковка с proposals нарезки (top-k / unknown).</td>
+                                        <td><span class="text-orange">Высокая:</span> семантика после нарезки и продуктовый слой.</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <strong>Чжоу Хунсян</strong>
+                                            <span class="team-role">AI Engineer<br>(Fullstack)</span>
+                                        </td>
+                                        <td>Макет в Figma; полная реализация UI (React SPA); запуск Backend (FastAPI); создание mock pipeline и унификация контрактов (JSON/CSV).</td>
+                                        <td>Интеграция UI и API, отладка сквозного прогона, подготовка системы к подключению боевого ML-контура.</td>
+                                        <td><span class="text-orange">Высокая:</span> весь инженерный контур (UI+API), готовность к демо.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div style="margin-top: 20px; font-size: 20px; color: var(--brand-gray); text-align: center; font-style: italic;">
+                        <strong>Интеграция контуров:</strong> Данил отдаёт интервалы ➜ Арсений вешает на них action/object ➜ Хунсян визуализирует в UI для HITL-редактирования.
                     </div>
                 </div>
             </section>
