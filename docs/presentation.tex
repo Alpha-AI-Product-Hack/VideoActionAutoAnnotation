@@ -1,0 +1,278 @@
+\documentclass[aspectratio=169]{beamer}
+
+\usepackage[T2A]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[russian]{babel}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning}
+
+\definecolor{BrandBlue}{RGB}{0,102,204}
+\definecolor{BrandGreen}{RGB}{0,153,102}
+\definecolor{BrandOrange}{RGB}{230,126,34}
+\definecolor{BrandGray}{RGB}{70,70,70}
+
+% --- Улучшение стиля и типографики ---
+\usetheme{Boadilla} % Более чистый и современный шаблон
+\usefonttheme{professionalfonts}
+
+% Настройка основных цветов под бренд
+\setbeamercolor{structure}{fg=BrandBlue}
+\setbeamercolor{palette primary}{bg=BrandBlue,fg=white}
+\setbeamercolor{palette secondary}{bg=BrandBlue!80!black,fg=white}
+\setbeamercolor{palette tertiary}{bg=BrandBlue!60!black,fg=white}
+\setbeamercolor{frametitle}{bg=BrandBlue, fg=white}
+\setbeamercolor{title}{bg=BrandBlue, fg=white}
+
+% Настройка цветов блоков
+\setbeamercolor{block title}{bg=BrandBlue, fg=white}
+\setbeamercolor{block body}{bg=BrandBlue!5, fg=black}
+\setbeamercolor{block title example}{bg=BrandGreen, fg=white}
+\setbeamercolor{block body example}{bg=BrandGreen!5, fg=black}
+\setbeamercolor{block title alerted}{bg=BrandOrange, fg=white}
+\setbeamercolor{block body alerted}{bg=BrandOrange!5, fg=black}
+
+% Современный плоский дизайн блоков (без теней)
+\setbeamertemplate{blocks}[rounded][shadow=false]
+\setbeamertemplate{itemize items}[circle]
+\setbeamertemplate{enumerate items}[circle]
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+\title{Автоматическая разметка действий по видео}
+\subtitle{Human-in-the-loop прототип для подготовки датасетов}
+\author{Команда VideoActionAutoAnnotation}
+\date{Хакатон Demo}
+
+\newcommand{\kpi}[2]{\textbf{#1}: #2}
+\newcommand{\pill}[2]{\tikz[baseline=(t.base)]\node[inner xsep=6pt, inner ysep=2pt, rounded corners=3pt, fill=#1, text=white, font=\small\bfseries] (t) {#2};}
+
+% Межстрочный интервал для таблиц
+\renewcommand{\arraystretch}{1.3}
+
+\begin{document}
+
+\begin{frame}{1. Продукт}
+\begin{block}{Одной фразой}
+\begin{itemize}
+  \setlength{\itemsep}{2pt}
+  \item \textbf{Продукт:} веб-приложение для разметки действий на видео
+  \item \textbf{Пользователи:} CV/ML инженеры, CV-эксперты и разметчики
+  \item \textbf{Решение:} авточерновик разметки $\rightarrow$ проверка человеком $\rightarrow$ экспорт JSON/CSV
+\end{itemize}
+\end{block}
+
+\vspace{8pt}
+\begin{columns}[T,onlytextwidth]
+\column{0.55\textwidth}
+\begin{itemize}
+  \setlength{\itemsep}{8pt}
+  \item \pill{BrandBlue}{Input} видео (MP4/MOV, $\le 30$ сек)
+  \item \pill{BrandOrange}{AI} шаги: \textbf{action, object, keyframe}
+  \item \pill{BrandGreen}{HITL} правка: границы, классы, кадры
+\end{itemize}
+
+\column{0.45\textwidth}
+\begin{alertblock}{Почему это важно}
+\begin{itemize}
+  \setlength{\itemsep}{8pt}
+  \item Ручная разметка: \textbf{15--30 мин} / ролик
+  \item 1000 роликов: \textbf{сотни часов}
+\end{itemize}
+\end{alertblock}
+\end{columns}
+\end{frame}
+
+\begin{frame}{2. Ценность}
+\begin{columns}[T,onlytextwidth]
+\column{0.50\textwidth}
+\begin{block}{Что меняется у пользователя}
+\begin{itemize}
+  \setlength{\itemsep}{8pt}
+  \item \pill{BrandGreen}{Speed} \textbf{$\ge 3\times$} быстрее
+  \item \pill{BrandOrange}{Bounds} ошибка границ \textbf{$\le 2$ сек}
+  \item \pill{BrandBlue}{Semantics} \textbf{$\ge 80\%$} accuracy
+  \item \pill{BrandGray}{Export} 100\% валидный JSON/CSV
+\end{itemize}
+\end{block}
+
+\column{0.48\textwidth}
+\begin{exampleblock}{Экономика (оценка)}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Ручная} & 15--30 мин/видео \\ \midrule
+\textbf{Авто + HITL} & 4--10 мин/видео \\ \midrule
+\textbf{Экономия} & $\ge 66\%$ времени \\ \bottomrule
+\end{tabularx}
+\end{exampleblock}
+
+\vspace{6pt}
+\begin{block}{Что получаем на выходе}
+\begin{itemize}
+  \setlength{\itemsep}{4pt}
+  \item Разметка сразу готова для обучения CV или роботов
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}{3. Демонстрация решения}
+\begin{block}{Фокус: один ключевой сценарий end-to-end}
+\begin{enumerate}
+  \setlength{\itemsep}{4pt}
+  \item \pill{BrandBlue}{Upload} загрузить видео
+  \item \pill{BrandOrange}{Run} запустить pipeline на бэкенде
+  \item \pill{BrandGray}{Review} открыть таймлайн шагов (confidence, keyframe)
+  \item \pill{BrandGreen}{Fix} исправить \textbf{одну} ошибку
+  \item \pill{BrandGray}{Export} выгрузить JSON/CSV
+\end{enumerate}
+\end{block}
+
+\vspace{6pt}
+\begin{columns}[T,onlytextwidth]
+\column{0.55\textwidth}
+\begin{block}{Как показать без записи видео}
+\begin{itemize}
+  \setlength{\itemsep}{4pt}
+  \item На слайде --- \textbf{карта шагов}
+  \item Переход в живой прототип: \textbf{один прогон, одна правка}
+\end{itemize}
+\end{block}
+
+\column{0.45\textwidth}
+\vspace{10pt}
+\centering
+\begin{tikzpicture}[node distance=6mm, every node/.style={font=\footnotesize\sffamily}]
+  \node[draw=BrandBlue, thick, rounded corners, align=center, fill=BrandBlue!10, text=BrandBlue!80!black] (ui) {UI\\React};
+  \node[draw=BrandGreen, thick, rounded corners, align=center, fill=BrandGreen!10, text=BrandGreen!80!black, right=6mm of ui] (api) {API\\FastAPI};
+  \node[draw=BrandOrange, thick, rounded corners, align=center, fill=BrandOrange!10, text=BrandOrange!80!black, right=6mm of api] (pl) {Pipeline};
+  \draw[-{Latex[length=2mm]}, thick, BrandGray] (ui) -- (api);
+  \draw[-{Latex[length=2mm]}, thick, BrandGray] (api) -- (pl);
+  \draw[-{Latex[length=2mm]}, thick, BrandGray, bend left=25] (pl) to (api);
+  \draw[-{Latex[length=2mm]}, thick, BrandGray, bend left=25] (api) to (ui);
+\end{tikzpicture}
+\end{columns}
+\end{frame}
+
+\begin{frame}{4. Архитектура и Технологии}
+\begin{columns}[T,onlytextwidth]
+\column{0.52\textwidth}
+\begin{block}{3 слоя (Архитектура)}
+\centering
+\vspace{4pt}
+\begin{tikzpicture}[node distance=6mm and 6mm, every node/.style={font=\scriptsize\sffamily}]
+  \node[draw=BrandBlue, thick, rounded corners, fill=BrandBlue!10, align=center, text width=2.6cm] (ui) {\textbf{Frontend} \\ Просмотр / правка};
+  \node[draw=BrandGreen, thick, rounded corners, fill=BrandGreen!10, below=6mm of ui, align=center, text width=2.6cm] (api) {\textbf{Backend} \\ API, job, валидация};
+  \node[draw=BrandOrange, thick, rounded corners, fill=BrandOrange!10, right=6mm of api, align=center, text width=2.6cm] (pl) {\textbf{Pipeline} \\ Границы $\rightarrow$ сегменты};
+  
+  \draw[<->, >=Latex, thick, BrandGray] (ui) -- node[right] {\tiny REST} (api);
+  \draw[->, >=Latex, thick, BrandGray] (api) -- node[above] {\tiny Async} (pl);
+  \draw[->, >=Latex, thick, BrandGray, bend left=15] (pl) to node[below] {\tiny Results} (api);
+\end{tikzpicture}
+\vspace{2pt}
+\end{block}
+
+\begin{block}{Ключевая идея pipeline}
+\begin{itemize}
+  \setlength{\itemsep}{6pt}
+  \item \pill{BrandOrange}{Multi-signal} motion, SAM3, ABD
+  \item \pill{BrandGray}{Fusion} temporal NMS
+  \item \pill{BrandGreen}{HITL} решает доменный сдвиг
+\end{itemize}
+\end{block}
+
+\column{0.46\textwidth}
+\begin{exampleblock}{Состояние на сегодня}
+\begin{itemize}
+  \setlength{\itemsep}{6pt}
+  \item \pill{BrandGreen}{Готово} pipeline $\rightarrow$ таймлайн
+  \item \pill{BrandGreen}{Готово} сегментация границ
+  \item \pill{BrandGray}{В работе} action/object классы
+\end{itemize}
+\end{exampleblock}
+
+\vspace{4pt}
+\begin{block}{Что важно для демо}
+\begin{itemize}
+  \setlength{\itemsep}{6pt}
+  \item Показать: прогон, правка, экспорт
+  \item Показать: confidence как подсказку
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+\begin{frame}{5. Тесты и метрики}
+\begin{columns}[T,onlytextwidth]
+\column{0.48\textwidth}
+\begin{block}{Целевые KPI (из постановки)}
+\begin{tabularx}{\textwidth}{@{}lX@{}}
+\toprule
+\textbf{Метрика} & \textbf{Цель} \\ \midrule
+Step-level F1 & $\ge 0.75$ \\ \midrule
+Ошибка границ & $\le 2$ сек \\ \midrule
+Action/Object & $\ge 80\%$ \\ \midrule
+Время обработки & $\le 2$ мин \\ \midrule
+JSON/CSV & 100\% валиден \\ \bottomrule
+\end{tabularx}
+\end{block}
+
+\column{0.50\textwidth}
+\begin{exampleblock}{Таблица тестов}
+\begin{tabularx}{\textwidth}{@{}l>{\raggedright\arraybackslash}Xr@{}}
+\toprule
+\textbf{Метрика} & \textbf{Условия} & \textbf{Факт} \\ \midrule
+F1@step & \textit{TODO} & \textit{TODO} \\ \midrule
+Boundary err. & \textit{TODO} & \textit{TODO} \\ \midrule
+Acc (Act/Obj) & \textit{TODO} & \textit{TODO} \\ \midrule
+Runtime & \textit{TODO} & \textit{TODO} \\ \bottomrule
+\end{tabularx}
+\end{exampleblock}
+\end{columns}
+
+\vspace{8pt}
+\begin{block}{Как подтверждаем функциональность}
+\begin{itemize}
+  \setlength{\itemsep}{4pt}
+  \item \pill{BrandGray}{Schema} контракт JSON/CSV валидируется автоматически
+  \item \pill{BrandGray}{UI} правка шагов фиксирует финальную версию разметки
+\end{itemize}
+\end{block}
+\end{frame}
+
+\begin{frame}{6. Итоги и план развития}
+\begin{block}{Короткий вывод}
+\begin{itemize}
+  \setlength{\itemsep}{4pt}
+  \item \pill{BrandGreen}{Value} автогенерация черновика $\rightarrow$ меньше ручной разметки (\textbf{$\ge 3\times$})
+  \item \pill{BrandGray}{Output} экспорт \textbf{JSON/CSV} для датасета и обучения
+\end{itemize}
+\end{block}
+
+\vspace{6pt}
+\begin{columns}[T,onlytextwidth]
+\column{0.52\textwidth}
+\begin{block}{Следующие шаги (после демо)}
+\begin{itemize}
+  \setlength{\itemsep}{6pt}
+  \item Улучшить \textbf{Top-k подсказки} в UI для action/object
+  \item Улучшить keyframe: выбор по контакту/движению
+  \item Ускорение: subsampling, кэш, профилирование
+\end{itemize}
+\end{block}
+
+\column{0.46\textwidth}
+\begin{block}{Дорожная карта ценности}
+\begin{itemize}
+  \setlength{\itemsep}{6pt}
+  \item \textbf{Active learning}: ревью только низкого confidence
+  \item Интеграции: Label Studio, CVAT
+  \item Масштабирование: кухня, сборка, склад
+\end{itemize}
+\end{block}
+\end{columns}
+\end{frame}
+
+\end{document}
+

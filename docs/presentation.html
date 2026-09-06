@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Автоматическая разметка действий по видео - Pitch Deck</title>
+    
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reset.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/theme/white.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --brand-blue: #0066CC;
+            --brand-green: #009966;
+            --brand-orange: #E67E22;
+            --brand-gray: #464646;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .reveal .slides {
+            text-align: left;
+        }
+
+        /* Slide Header (Beamer style) */
+        .slide-header {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: var(--brand-blue);
+            color: white;
+            padding: 15px 40px;
+            box-sizing: border-box;
+            font-size: 36px;
+            font-weight: 700;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .slide-content {
+            margin-top: 90px;
+            padding: 20px 40px;
+            height: calc(100% - 90px);
+            box-sizing: border-box;
+            font-size: 26px;
+            line-height: 1.4;
+        }
+
+        /* Title Slide */
+        .title-slide {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            text-align: center;
+            background: linear-gradient(135deg, rgba(0,102,204,0.05) 0%, rgba(0,153,102,0.05) 100%);
+        }
+        .title-slide h1 {
+            color: var(--brand-blue);
+            font-size: 56px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            text-transform: none;
+        }
+        .title-slide h2 {
+            color: var(--brand-gray);
+            font-size: 32px;
+            font-weight: 400;
+            margin-bottom: 40px;
+            text-transform: none;
+        }
+        .title-slide .meta {
+            font-size: 24px;
+            color: #666;
+        }
+
+        /* Blocks */
+        .block {
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            overflow: hidden;
+            background: #fff;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .block-header {
+            padding: 12px 20px;
+            font-weight: 700;
+            font-size: 26px;
+            color: white;
+        }
+        .block-body {
+            padding: 16px 20px;
+            font-size: 24px;
+        }
+        
+        .block.blue .block-header { background: var(--brand-blue); }
+        .block.blue .block-body { background: rgba(0,102,204,0.03); }
+        
+        .block.green .block-header { background: var(--brand-green); }
+        .block.green .block-body { background: rgba(0,153,102,0.03); }
+        
+        .block.orange .block-header { background: var(--brand-orange); }
+        .block.orange .block-body { background: rgba(230,126,34,0.03); }
+
+        /* Pills */
+        .pill {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 16px;
+            color: white;
+            font-size: 18px;
+            font-weight: 700;
+            margin-right: 10px;
+            vertical-align: middle;
+        }
+        .pill.blue { background-color: var(--brand-blue); }
+        .pill.green { background-color: var(--brand-green); }
+        .pill.orange { background-color: var(--brand-orange); }
+        .pill.gray { background-color: var(--brand-gray); }
+
+        /* Layout */
+        .cols {
+            display: flex;
+            gap: 30px;
+            margin-bottom: 20px;
+        }
+        .col { flex: 1; }
+        .col-33 { flex: 0.333; }
+        .col-40 { flex: 0.4; }
+        .col-45 { flex: 0.45; }
+        .col-48 { flex: 0.48; }
+        .col-50 { flex: 0.5; }
+        .col-52 { flex: 0.52; }
+        .col-55 { flex: 0.55; }
+        .col-60 { flex: 0.6; }
+
+        /* Lists */
+        ul, ol {
+            margin: 0;
+            padding-left: 25px;
+        }
+        li {
+            margin-bottom: 12px;
+        }
+        li:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Tables */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 22px;
+        }
+        th, td {
+            padding: 12px 16px;
+            text-align: left;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        th {
+            font-weight: 700;
+            border-bottom: 2px solid var(--brand-gray);
+            color: var(--brand-gray);
+        }
+        tr:last-child td {
+            border-bottom: 2px solid var(--brand-gray);
+        }
+
+        /* Helpers */
+        .text-blue { color: var(--brand-blue); font-weight: 700; }
+        .text-green { color: var(--brand-green); font-weight: 700; }
+        .text-orange { color: var(--brand-orange); font-weight: 700; }
+        .text-gray { color: var(--brand-gray); font-weight: 700; }
+        
+        .mt-4 { margin-top: 16px; }
+        .mb-4 { margin-bottom: 16px; }
+        .mb-0 { margin-bottom: 0 !important; }
+    </style>
+</head>
+<body>
+    <div class="reveal">
+        <div class="slides">
+            
+            <!-- Slide 0: Title -->
+            <section>
+                <div class="title-slide">
+                    <h1>Автоматическая разметка действий по видео</h1>
+                    <h2>Human-in-the-loop прототип для подготовки датасетов</h2>
+                    <div class="meta">
+                        <p><strong>Команда VideoActionAutoAnnotation</strong></p>
+                        <p>Хакатон Demo</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 1: Проблема и Продукт -->
+            <section>
+                <div class="slide-header">1. Проблема и Продукт</div>
+                <div class="slide-content">
+                    <div class="block blue mb-4">
+                        <div class="block-header">Суть решения</div>
+                        <div class="block-body">
+                            <ul>
+                                <li><strong>Продукт:</strong> Веб-приложение для автоматической разметки действий на видео</li>
+                                <li><strong>Пользователи:</strong> ML-инженеры, CV-эксперты и разметчики данных</li>
+                                <li><strong>Решение:</strong> Уход от разметки с нуля (генерация черновика → быстрая правка)</li>
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div class="cols">
+                        <div class="col col-50">
+                            <div class="block orange mb-0" style="height: 100%;">
+                                <div class="block-header">Проблематика</div>
+                                <div class="block-body">
+                                    <ul>
+                                        <li><strong>Долго:</strong> 15–30 минут ручного труда на 1 короткий ролик</li>
+                                        <li><strong>Дорого:</strong> разметка 1000 видео обходится в сотни часов</li>
+                                        <li><strong>Боль:</strong> монотонное ручное выделение границ и подбор классов</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col col-50">
+                            <div class="block green mb-0" style="height: 100%;">
+                                <div class="block-header">Ценность для процесса</div>
+                                <div class="block-body">
+                                    <ul>
+                                        <li><strong>Скорость:</strong> 4–10 мин вместо 15–30 мин / ролик</li>
+                                        <li><strong>Экономия:</strong> снижение затрат времени на <strong>≥ 66%</strong></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 2: Демонстрация решения -->
+            <section>
+                <div class="slide-header">2. Демонстрация решения</div>
+                <div class="slide-content">
+                    <div class="block blue mb-4">
+                        <div class="block-header">Один ключевой сценарий</div>
+                        <div class="block-body">
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 22px; padding: 10px 0;">
+                                <div><span class="pill blue">1. Upload</span> Загрузка видео</div>
+                                <div>➜</div>
+                                <div><span class="pill orange">2. Auto-Label</span> Поиск действий</div>
+                                <div>➜</div>
+                                <div><span class="pill green">3. Fix</span> Правка (HITL)</div>
+                                <div>➜</div>
+                                <div><span class="pill gray">4. Export</span> JSON/CSV</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="block green mt-4">
+                        <div class="block-header">Переход к живому прототипу</div>
+                        <div class="block-body" style="text-align: center; font-size: 28px; padding: 30px;">
+                            <em>Без предзаписанных видео и макетов.</em><br><br>
+                            <strong>Только работающий код.</strong>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 3: Технологии под капотом -->
+            <section>
+                <div class="slide-header">3. Технологии под капотом</div>
+                <div class="slide-content">
+                    <div class="block blue mb-4">
+                        <div class="block-header">Оптимальная архитектура</div>
+                        <div class="block-body" style="font-size: 22px;">
+                            3 компонента для баланса скорости и точности. Решаем проблему без тяжелых моделей с нуля.
+                        </div>
+                    </div>
+                    <div class="cols">
+                        <div class="col col-33">
+                            <div class="block blue mb-0" style="height: 100%;">
+                                <div class="block-header" style="font-size: 20px;">UI (Frontend)</div>
+                                <div class="block-body" style="font-size: 19px;">
+                                    <ul>
+                                        <li><strong>Роль:</strong> Удобный Human-in-the-loop</li>
+                                        <li><strong>Суть:</strong> Быстрая визуальная оценка и правка таймлайна</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col col-33">
+                            <div class="block green mb-0" style="height: 100%;">
+                                <div class="block-header" style="font-size: 20px;">API (Backend)</div>
+                                <div class="block-body" style="font-size: 19px;">
+                                    <ul>
+                                        <li><strong>Роль:</strong> Оркестрация и валидация</li>
+                                        <li><strong>Суть:</strong> Гарантия 100% корректного формата JSON/CSV</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col col-33">
+                            <div class="block orange mb-0" style="height: 100%;">
+                                <div class="block-header" style="font-size: 20px;">Pipeline (ML)</div>
+                                <div class="block-body" style="font-size: 19px;">
+                                    <ul>
+                                        <li><strong>Роль:</strong> Анализ границ и действий</li>
+                                        <li><strong>Суть:</strong> Слияние сигналов (Motion, SAM3, ABD) без переобучения</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 4: Доказательство работы -->
+            <section>
+                <div class="slide-header">4. Доказательство работы (Метрики)</div>
+                <div class="slide-content">
+                    <div class="block blue">
+                        <div class="block-header">Результаты тестирования</div>
+                        <div class="block-body" style="padding: 10px 20px;">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Метрика (Влияние на процесс)</th>
+                                        <th>Целевое значение</th>
+                                        <th>Фактический результат</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><strong>Качество сегментации (Step-level F1)</strong></td>
+                                        <td>≥ 0.75</td>
+                                        <td class="text-green">[Подставить данные %]</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Ошибка временных границ</strong></td>
+                                        <td>≤ 2 сек</td>
+                                        <td class="text-green">[Подставить данные сек]</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Точность Action/Object</strong></td>
+                                        <td>≥ 80%</td>
+                                        <td class="text-green">[Подставить данные %]</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Успешность выгрузки (Валидность)</strong></td>
+                                        <td>100%</td>
+                                        <td class="text-green">100% (Проверено контрактом)</td>
+                                    </tr>
+                                    <tr>
+                                        <td><strong>Время обработки видео</strong></td>
+                                        <td>≤ 2 мин</td>
+                                        <td class="text-green">[Подставить данные сек]</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Slide 5: Итоги и План развития -->
+            <section>
+                <div class="slide-header">5. Итоги и План развития</div>
+                <div class="slide-content">
+                    <div class="block blue mb-4">
+                        <div class="block-header">Ключевой итог</div>
+                        <div class="block-body">
+                            Продукт <strong>сокращает время разметки на 66%</strong>. ML-инженеры быстрее обучают модели, сохраняя высокое качество данных.
+                        </div>
+                    </div>
+                    
+                    <div class="cols">
+                        <div class="col col-50">
+                            <div class="block green mb-0" style="height: 100%;">
+                                <div class="block-header">Масштабирование (Бизнес)</div>
+                                <div class="block-body">
+                                    <ul>
+                                        <li><strong>Новые домены:</strong> кухня, сборка на конвейере, склад</li>
+                                        <li><strong>Новые клиенты:</strong> интеграция в 3 CV-лаборатории (план на год)</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col col-50">
+                            <div class="block orange mb-0" style="height: 100%;">
+                                <div class="block-header">Техническое развитие</div>
+                                <div class="block-body">
+                                    <ul>
+                                        <li><strong>Active Learning:</strong> ревью только шагов с низким confidence</li>
+                                        <li><strong>Интеграции:</strong> прямая выгрузка в Label Studio и CVAT</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </div>
+
+    <!-- Reveal.js Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.3.1/reveal.min.js"></script>
+    <script>
+        Reveal.initialize({
+            // 16:9 aspect ratio
+            width: 1280,
+            height: 720,
+            margin: 0.05,
+            minScale: 0.2,
+            maxScale: 2.0,
+            
+            // Presentation settings
+            controls: true,
+            progress: true,
+            center: false,
+            hash: true,
+            transition: 'slide', // none/fade/slide/convex/concave/zoom
+            
+            // Disable default reveal styling affecting our custom layout
+            disableLayout: false
+        });
+    </script>
+</body>
+</html>
